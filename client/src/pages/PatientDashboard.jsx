@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useSelector } from 'react-redux';
 import { 
   Search, 
   Calendar, 
@@ -17,11 +18,13 @@ const upcomingApts = [
 ];
 
 const PatientDashboard = () => {
+  const { user } = useSelector((state) => state.auth);
+
   return (
     <div className="space-y-10">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-4xl font-black text-text">Good Morning, John!</h1>
+          <h1 className="text-4xl font-black text-text">Good Morning, {user?.name?.split(' ')[0] || 'Patient'}!</h1>
           <p className="text-slate-500 mt-2">How are you feeling today?</p>
         </div>
         <div className="flex gap-4">

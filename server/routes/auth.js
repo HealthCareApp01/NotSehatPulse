@@ -1,50 +1,82 @@
-const express = require('express');
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import User from '../models/User.js';
+
 const router = express.Router();
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
 
-// Mock OTP Database
-const otps = {};
+// Signup Route
+router.post('/signup', async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
 
-// Send OTP (Mock)
-router.post('/send-otp', async (req, res) => {
-  const { phone } = req.body;
-  if (!phone) return res.status(400).json({ success: false, message: "Phone number required" });
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
+    }
 
-  // Mock OTP Generation
-  const otp = "123456"; 
-  otps[phone] = otp;
+    let user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).json({ success: false, message: "Email already registered" });
+    }
 
-  console.log(`[MOCK OTP] Sent ${otp} to ${phone}`);
-  
-  res.json({ 
-    success: true, 
-    message: "OTP sent successfully (Check server console for mock code: 123456)" 
-  });
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    user = new User({
+      name,
+      email,
+      password: hashedPassword,
+      role
+    });
+
+    await user.save();
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        }
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
-// Verify OTP & Login/Signup
-router.post('/verify-otp', async (req, res) => {
-  const { phone, otp, name, role } = req.body;
-
-  if (otps[phone] !== otp) {
-    return res.status(400).json({ success: false, message: "Invalid OTP" });
-  }
-
+// Login Route
+router.post('/login', async (req, res) => {
   try {
-    let user = await User.findOne({ phone });
+    const { email, password } = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password required" });
+    }
+
+    const user = await User.findOne({ email });
     if (!user) {
-      if (!name || !role) {
-        return res.status(400).json({ success: false, message: "Complete registration details required for new users" });
-      }
-      user = new User({ name, phone, role });
-      await user.save();
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
     const token = jwt.sign(
-      { userId: user._id, role: user.role }, 
-      process.env.JWT_SECRET || 'fallback_secret', 
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET || 'fallback_secret',
       { expiresIn: '7d' }
     );
 
@@ -55,18 +87,15 @@ router.post('/verify-otp', async (req, res) => {
         user: {
           id: user._id,
           name: user.name,
+          email: user.email,
           role: user.role,
-          phone: user.phone
         }
       }
     });
 
-    // Clear OTP after use
-    delete otps[phone];
-
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-module.exports = router;
+export default router;

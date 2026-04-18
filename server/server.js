@@ -1,9 +1,12 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const http = require('http');
-const { Server } = require('socket.io');
-require('dotenv').config();
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import http from 'http';
+import { Server } from 'socket.io';
+import dotenv from 'dotenv';
+import authRoutes from './routes/auth.js';
+
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
@@ -13,9 +16,6 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 });
-
-// Routes
-const authRoutes = require('./routes/auth');
 
 // Middleware
 app.use(cors());

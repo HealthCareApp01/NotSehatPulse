@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const PatientProfileSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -7,4 +7,4 @@ const PatientProfileSchema = new mongoose.Schema({
   pastReports: [{ type: String }]
 });
 
-module.exports = mongoose.model('PatientProfile', PatientProfileSchema);
+export default mongoose.model('PatientProfile', PatientProfileSchema);

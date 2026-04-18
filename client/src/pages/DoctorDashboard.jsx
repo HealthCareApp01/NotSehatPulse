@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useSelector } from 'react-redux';
 import { 
   Users, 
   Calendar, 
@@ -39,11 +40,13 @@ const StatCard = ({ icon, label, value, trend }) => (
 );
 
 const DoctorDashboard = () => {
+  const { user } = useSelector((state) => state.auth);
+
   return (
     <div className="space-y-10">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-4xl font-black text-text">Welcome back, Dr. Sarah!</h1>
+          <h1 className="text-4xl font-black text-text">Welcome back, {user?.name || 'Doctor'}!</h1>
           <p className="text-slate-500 mt-2">You have 8 appointments scheduled for today.</p>
         </div>
         <button className="bg-primary text-white px-8 py-4 rounded-2xl font-bold medical-gradient shadow-xl shadow-primary/20 transform hover:-translate-y-1 transition-all">

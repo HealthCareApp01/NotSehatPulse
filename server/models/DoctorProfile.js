@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const DoctorProfileSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -16,4 +16,4 @@ const DoctorProfileSchema = new mongoose.Schema({
   verified: { type: Boolean, default: false } // Toggle manually via DB
 });
 
-module.exports = mongoose.model('DoctorProfile', DoctorProfileSchema);
+export default mongoose.model('DoctorProfile', DoctorProfileSchema);
