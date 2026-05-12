@@ -1,6 +1,6 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { Baby, Activity, Heart, Eye, Brain, Stethoscope } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const specialties = [
   { name: 'Pediatrics', icon: <Baby size={32} />, color: 'bg-blue-50 text-blue-600' },
@@ -12,6 +12,8 @@ const specialties = [
 ];
 
 const SpecialtiesGrid = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -20,7 +22,12 @@ const SpecialtiesGrid = () => {
             <h2 className="text-3xl font-bold text-text">Consult Top Specialties</h2>
             <p className="text-slate-500 mt-2">Professional advice for all your health concerns</p>
           </div>
-          <button className="text-primary font-bold hover:underline">View All</button>
+          <button
+            onClick={() => navigate('/find-doctors')}
+            className="text-primary font-bold hover:underline"
+          >
+            View All
+          </button>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
@@ -28,6 +35,7 @@ const SpecialtiesGrid = () => {
             <motion.div
               key={spec.name}
               whileHover={{ y: -5 }}
+              onClick={() => navigate('/find-doctors')}
               className="flex flex-col items-center p-8 rounded-[32px] border border-secondary hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all cursor-pointer group"
             >
               <div className={`w-16 h-16 ${spec.color} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>

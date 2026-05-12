@@ -1,6 +1,6 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { Star, Clock, MapPin } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const doctors = [
   {
@@ -42,6 +42,8 @@ const doctors = [
 ];
 
 const DoctorsCarousel = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="py-20 bg-secondary/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -98,7 +100,10 @@ const DoctorsCarousel = () => {
                     <span className="text-xs text-slate-400 block">Consultation Fee</span>
                     <span className="text-xl font-bold text-text">{doc.fee}</span>
                   </div>
-                  <button className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-primary-dark transition-colors shadow-lg shadow-primary/20">
+                  <button
+                    onClick={() => navigate('/find-doctors')}
+                    className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-primary-dark transition-colors shadow-lg shadow-primary/20"
+                  >
                     Book Now
                   </button>
                 </div>

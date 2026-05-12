@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Calendar, 
@@ -18,6 +19,7 @@ const upcomingApts = [
 ];
 
 const PatientDashboard = () => {
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
 
   return (
@@ -32,7 +34,10 @@ const PatientDashboard = () => {
             <FileText size={20} className="text-primary" />
             My Reports
           </button>
-          <button className="bg-primary text-white px-8 py-4 rounded-2xl font-bold medical-gradient shadow-xl shadow-primary/20 transform hover:-translate-y-1 transition-all">
+          <button
+            onClick={() => navigate('/find-doctors')}
+            className="bg-primary text-white px-8 py-4 rounded-2xl font-bold medical-gradient shadow-xl shadow-primary/20 transform hover:-translate-y-1 transition-all"
+          >
             Book Appointment
           </button>
         </div>
@@ -49,7 +54,10 @@ const PatientDashboard = () => {
               <p className="text-white/60 mb-8 leading-relaxed">
                 Describe your symptoms to our <span className="text-primary font-bold">AI Health Assistant</span> and get recommendations for the right specialists.
               </p>
-              <button className="bg-primary text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 hover:bg-primary-dark transition-all">
+              <button
+                onClick={() => navigate('/ai-symptom-checker')}
+                className="bg-primary text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 hover:bg-primary-dark transition-all"
+              >
                 Start AI Checkup <ArrowRight size={20} />
               </button>
             </div>
@@ -132,7 +140,10 @@ const PatientDashboard = () => {
              <div className="relative z-10">
                <h3 className="text-xl font-bold text-text mb-2">Order Medicines</h3>
                <p className="text-slate-500 text-sm mb-6">Get medicines delivered to your doorstep in 60 mins.</p>
-               <button className="w-full py-4 bg-white border-2 border-primary text-primary rounded-2xl font-bold hover:bg-primary hover:text-white transition-all">
+               <button
+                 onClick={() => navigate('/medicines')}
+                 className="w-full py-4 bg-white border-2 border-primary text-primary rounded-2xl font-bold hover:bg-primary hover:text-white transition-all"
+               >
                  Order Now
                </button>
              </div>

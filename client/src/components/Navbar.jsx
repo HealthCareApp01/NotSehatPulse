@@ -13,16 +13,16 @@ const Navbar = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/login');
+    navigate('/', { replace: true });
     setIsOpen(false);
   };
 
   const navLinks = [
     { name: 'Home', href: '/' },
-    { name: 'Find Doctors', href: '#' },
-    { name: 'Medicines', href: '#' },
-    { name: 'Lab Tests', href: '#' },
-    { name: 'Contact Us', href: '#' },
+    { name: 'Find Doctors', href: '/find-doctors' },
+    { name: 'Medicines', href: '/pharmacy' },
+    { name: 'Lab Tests', href: '/labs' },
+    { name: 'Contact Us', href: '/contact-us' },
   ];
 
   return (
@@ -40,13 +40,13 @@ const Navbar = () => {
 
           <div className='hidden md:flex items-center space-x-8'>
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.name}
-                href={link.href}
+                to={link.href}
                 className='text-text hover:text-primary font-medium transition-colors'
               >
                 {link.name}
-              </a>
+              </Link>
             ))}
 
             {isAuthenticated && user ? (
@@ -97,14 +97,14 @@ const Navbar = () => {
             className='md:hidden bg-white border-b border-secondary px-4 py-6 flex flex-col gap-4 overflow-hidden'
           >
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.name}
-                href={link.href}
+                to={link.href}
                 className='text-text font-medium text-lg'
                 onClick={() => setIsOpen(false)}
               >
                 {link.name}
-              </a>
+              </Link>
             ))}
 
             {isAuthenticated ? (

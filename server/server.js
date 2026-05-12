@@ -27,7 +27,7 @@ app.use('/api/auth', authRoutes);
 // MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/healthcare';
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ MongoDB Connected'))
+  .then(() => console.log('✅ MongoDB Connected', MONGO_URI))
   .catch((err) => console.error('❌ MongoDB Connection Error:', err));
 
 // Initial Route

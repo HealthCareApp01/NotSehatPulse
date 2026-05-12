@@ -8,7 +8,9 @@ import {
   LogOut,
   Search,
   PlusCircle,
-  Stethoscope
+  Stethoscope,
+  Pill,
+  FlaskConical
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -34,15 +36,10 @@ const DashboardLayout = ({ children }) => {
   const dispatch = useDispatch();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-    }
-  }, [isAuthenticated, navigate]);
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   const getDashboardPath = () => {
@@ -51,36 +48,43 @@ const DashboardLayout = ({ children }) => {
 
   const sidebarItems = [
     { icon: <LayoutDashboard size={24} />, label: 'Dashboard', path: getDashboardPath() },
+    { icon: <Stethoscope size={24} />, label: 'Doctors', path: '/find-doctors' },
+    { icon: <Pill size={24} />, label: 'Medicines', path: '/medicines' },
+    { icon: <FlaskConical size={24} />, label: 'Lab Tests', path: '/labs' },
     { icon: <Calendar size={24} />, label: 'Appointments', path: '/appointments' },
     { icon: <MessageSquare size={24} />, label: 'Chat', path: '/chat' },
-    { icon: <Stethoscope size={24} />, label: 'Pharmacy', path: '/pharmacy' },
     { icon: <PlusCircle size={24} />, label: 'AI Checker', path: '/ai-symptom-checker' },
   ];
 
-  if (!isAuthenticated) return null;
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-24 bg-white border-r border-secondary flex flex-col items-center py-8 gap-10">
+      <aside className="w-24 bg-white border-r border-secondary flex flex-col items-center py-8 gap-8">
         <button
           onClick={() => navigate('/')}
-          className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center medical-gradient"
+          className="w-12 h-12 bg-primary rounded-2xl flex-shrink-0 flex items-center justify-center medical-gradient"
         >
           <span className="text-white font-black text-xl">H</span>
         </button>
 
-        <nav className="flex-1 flex flex-col gap-4">
-          {sidebarItems.map((item) => (
-            <SidebarItem
-              key={item.label}
-              {...item}
-              active={location.pathname === item.path}
-            />
-          ))}
-        </nav>
+        <div className="flex-1 w-full relative flex flex-col items-center overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-white to-transparent z-10 pointer-events-none" />
 
-        <div className="flex flex-col gap-4">
+          <nav className="flex-1 w-full flex flex-col gap-4 overflow-y-auto no-scrollbar py-4 items-center">
+            {sidebarItems.map((item) => (
+              <SidebarItem
+                key={item.label}
+                {...item}
+                active={location.pathname === item.path}
+              />
+            ))}
+          </nav>
+
+          <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent z-10 pointer-events-none" />
+        </div>
+
+        <div className="flex flex-col gap-4 flex-shrink-0">
           <SidebarItem icon={<Settings size={24} />} label="Settings" path="/settings" />
           <button
             onClick={handleLogout}

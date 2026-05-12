@@ -34,8 +34,8 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.role === 'Doctor') navigate('/doctor-dashboard');
-      else navigate('/patient-dashboard');
+      if (user.role === 'Doctor') navigate('/doctor-dashboard', { replace: true });
+      else navigate('/patient-dashboard', { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
 
@@ -51,8 +51,8 @@ const Login = () => {
         const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
         if (res.data.success) {
           dispatch(loginSuccess({ user: res.data.data.user, token: res.data.data.token }));
-          if (res.data.data.user.role === 'Doctor') navigate('/doctor-dashboard');
-          else navigate('/patient-dashboard');
+          if (res.data.data.user.role === 'Doctor') navigate('/doctor-dashboard', { replace: true });
+          else navigate('/patient-dashboard', { replace: true });
         }
       } catch (err) {
         setError(err.response?.data?.message || 'Login failed');
@@ -73,8 +73,8 @@ const Login = () => {
         const res = await axios.post('http://localhost:5000/api/auth/signup', { name, email, password, role });
         if (res.data.success) {
           dispatch(loginSuccess({ user: res.data.data.user, token: res.data.data.token }));
-          if (role === 'Doctor') navigate('/doctor-dashboard');
-          else navigate('/patient-dashboard');
+          if (role === 'Doctor') navigate('/doctor-dashboard', { replace: true });
+          else navigate('/patient-dashboard', { replace: true });
         }
       } catch (err) {
         setError(err.response?.data?.message || 'Signup failed');
