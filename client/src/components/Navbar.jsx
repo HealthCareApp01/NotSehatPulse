@@ -1,15 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, X, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
+import { fetchCart } from '../store/slices/cartSlice';
+import { ShoppingCart } from 'lucide-react';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const { cart } = useSelector((state) => state.cart);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchCart());
+    }
+  }, [isAuthenticated, dispatch]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -51,6 +60,14 @@ const Navbar = () => {
 
             {isAuthenticated && user ? (
               <div className="flex items-center gap-4 border-l pl-8 border-secondary">
+                <Link to="/medicines" className="relative p-2 text-slate-400 hover:text-primary transition-colors">
+                  <ShoppingCart size={22} />
+                  {cart?.items?.length > 0 && (
+                    <span className="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                      {cart.items.length}
+                    </span>
+                  )}
+                </Link>
                 <Link
                   to={user.role === 'Doctor' ? '/doctor-dashboard' : '/patient-dashboard'}
                   className="flex items-center gap-2 text-text font-bold hover:text-primary transition-colors"

@@ -106,7 +106,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             element={
               <ProtectedRoute>
                 <DashboardLayout>
-                  <Pharmacy />
+                  <PharmacyAndLabs />
                 </DashboardLayout>
               </ProtectedRoute>
             }

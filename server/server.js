@@ -5,6 +5,10 @@ import http from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
+import medicineRoutes from './routes/medicineRoutes.js';
+import labTestRoutes from './routes/labTestRoutes.js';
+import cartRoutes from './routes/cartRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
 
 dotenv.config();
 
@@ -23,6 +27,10 @@ app.use(express.json());
 
 // Register Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/medicines', medicineRoutes);
+app.use('/api/lab-tests', labTestRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
 
 // MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/healthcare';

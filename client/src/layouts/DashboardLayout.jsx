@@ -15,6 +15,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
+import { setSearchTerm } from '../store/slices/productSlice';
 
 const SidebarItem = ({ icon, label, path, active }) => (
   <Link to={path}>
@@ -35,6 +36,7 @@ const DashboardLayout = ({ children }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const { searchTerm } = useSelector((state) => state.products);
 
 
   const handleLogout = () => {
@@ -46,10 +48,20 @@ const DashboardLayout = ({ children }) => {
     return user?.role === 'Doctor' ? '/doctor-dashboard' : '/patient-dashboard';
   };
 
+  const getSearchPlaceholder = () => {
+    if (location.pathname === '/medicines') return 'Search medicines, brands, or categories...';
+    if (location.pathname === '/labs') return 'Search blood tests, checkups, or scans...';
+    return 'Search appointments, doctors, reports...';
+  };
+
+  const handleSearch = (e) => {
+    dispatch(setSearchTerm(e.target.value));
+  };
+
   const sidebarItems = [
     { icon: <LayoutDashboard size={24} />, label: 'Dashboard', path: getDashboardPath() },
     { icon: <Stethoscope size={24} />, label: 'Doctors', path: '/find-doctors' },
-    { icon: <Pill size={24} />, label: 'Medicines', path: '/medicines' },
+    { icon: <Pill size={24} />, label: 'Pharmacy', path: '/medicines' },
     { icon: <FlaskConical size={24} />, label: 'Lab Tests', path: '/labs' },
     { icon: <Calendar size={24} />, label: 'Appointments', path: '/appointments' },
     { icon: <MessageSquare size={24} />, label: 'Chat', path: '/chat' },
@@ -103,11 +115,12 @@ const DashboardLayout = ({ children }) => {
             <Search size={20} className="text-slate-400" />
             <input
               type="text"
-              placeholder="Search appointments, doctors, reports..."
+              placeholder={getSearchPlaceholder()}
+              value={searchTerm}
+              onChange={handleSearch}
               className="bg-transparent outline-none w-full font-medium text-slate-600"
             />
           </div>
-
           <div className="flex items-center gap-6">
             <div className="text-right">
               <span className="block font-bold text-text">{user?.name || 'User'}</span>
