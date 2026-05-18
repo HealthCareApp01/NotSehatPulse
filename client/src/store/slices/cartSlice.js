@@ -58,6 +58,15 @@ export const removeFromCart = createAsyncThunk('cart/removeFromCart', async (pro
   }
 });
 
+export const clearCart = createAsyncThunk('cart/clearCart', async (_, { getState, rejectWithValue }) => {
+  try {
+    const response = await axios.delete(`${API_URL}/clear`, getAuthConfig(getState));
+    return response.data.data;
+  } catch (error) {
+    return rejectWithValue(error.response.data.message || 'Failed to clear cart');
+  }
+});
+
 const cartSlice = createSlice({
   name: 'cart',
   initialState: {
@@ -93,6 +102,9 @@ const cartSlice = createSlice({
       })
       .addCase(updateCartQuantity.fulfilled, (state, action) => {
         state.cart = action.payload;
+      })
+      .addCase(clearCart.fulfilled, (state) => {
+        state.cart = { items: [] };
       })
       .addCase(removeFromCart.fulfilled, (state, action) => {
         state.cart = action.payload;

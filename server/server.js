@@ -10,6 +10,7 @@ import labTestRoutes from './routes/labTestRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
+import appointmentRoutes from './routes/appointmentRoutes.js';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use('/api/lab-tests', labTestRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 // MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/healthcare';

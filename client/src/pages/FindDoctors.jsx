@@ -4,6 +4,7 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Clock, MapPin, X, ShieldCheck, DollarSign, Calendar, Sparkles } from 'lucide-react';
 import { setSearchTerm } from '../store/slices/productSlice';
+import { bookAppointment, resetBookingSuccess } from '../store/slices/appointmentSlice';
 
 const specialties = ['All', 'Cardiologist', 'Dermatologist', 'Pediatrician', 'Neurologist'];
 
@@ -49,7 +50,26 @@ const FindDoctors = () => {
   const [loading, setLoading] = useState(false);
   const [activeSpecialty, setActiveSpecialty] = useState('All');
   const [activeDoctor, setActiveDoctor] = useState(null);
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState(0);
   const [error, setError] = useState('');
+
+  const { bookingSuccess } = useSelector((state) => state.appointments);
+
+  // When a new doctor is clicked, reset the selected slot
+  useEffect(() => {
+    setSelectedSlotIndex(0);
+  }, [activeDoctor]);
+
+  // Handle successful booking overlay close
+  useEffect(() => {
+    if (bookingSuccess) {
+      const timer = setTimeout(() => {
+        setActiveDoctor(null);
+        dispatch(resetBookingSuccess());
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [bookingSuccess, dispatch]);
 
   const fetchDoctors = async (queryStr = '') => {
     setLoading(true);
@@ -86,6 +106,28 @@ const FindDoctors = () => {
     if (spec !== 'All') {
       dispatch(setSearchTerm(''));
     }
+  };
+
+  const handleBook = () => {
+    if (!activeDoctor) return;
+    
+    let day = 'Mon';
+    let timeSlot = '10:00 AM - 4:00 PM';
+    
+    if (activeDoctor.availability && activeDoctor.availability.length > 0) {
+      const sched = activeDoctor.availability[selectedSlotIndex];
+      day = sched.day;
+      timeSlot = sched.slots && sched.slots.length > 0 ? sched.slots[0] : '10:00 AM - 4:00 PM';
+    } else {
+      const defaultDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+      day = defaultDays[selectedSlotIndex] || 'Mon';
+    }
+    
+    dispatch(bookAppointment({
+      doctorId: activeDoctor.userId?._id,
+      date: new Date(),
+      timeSlot: `${day} (${timeSlot})`
+    }));
   };
 
   return (
@@ -297,33 +339,71 @@ const FindDoctors = () => {
 
                 {/* Availability Slots */}
                 <div className="space-y-3">
-                  <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">Weekly Availability</h4>
+                  <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">Select Availability Slot</h4>
                   <div className="flex flex-wrap gap-2">
                     {activeDoctor.availability && activeDoctor.availability.length > 0 ? (
                       activeDoctor.availability.map((sched, idx) => (
-                        <div key={idx} className="bg-white border border-secondary p-3 rounded-xl flex flex-col items-center min-w-[90px] shadow-sm">
-                          <span className="text-[10px] text-primary font-bold uppercase">{sched.day}</span>
-                          <span className="text-[9px] text-slate-500 font-bold mt-1 uppercase">
+                        <button
+                          key={idx}
+                          onClick={() => setSelectedSlotIndex(idx)}
+                          className={`border p-3 rounded-xl flex flex-col items-center min-w-[90px] shadow-sm cursor-pointer transition-all ${
+                            selectedSlotIndex === idx
+                              ? 'bg-primary/10 border-primary scale-105'
+                              : 'bg-white border-secondary hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className={`text-[10px] font-bold uppercase ${selectedSlotIndex === idx ? 'text-primary' : 'text-slate-500'}`}>{sched.day}</span>
+                          <span className="text-[9px] text-slate-400 font-bold mt-1 uppercase">
                             {sched.slots && sched.slots.length > 0 ? `${sched.slots[0]}` : '9AM - 5PM'}
                           </span>
-                        </div>
+                        </button>
                       ))
                     ) : (
-                      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day) => (
-                        <div key={day} className="bg-white border border-secondary px-4 py-2.5 rounded-xl flex flex-col items-center min-w-[80px]">
-                          <span className="text-[10px] text-primary font-bold uppercase">{day}</span>
+                      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, idx) => (
+                        <button
+                          key={day}
+                          onClick={() => setSelectedSlotIndex(idx)}
+                          className={`border px-4 py-2.5 rounded-xl flex flex-col items-center min-w-[80px] cursor-pointer transition-all ${
+                            selectedSlotIndex === idx
+                              ? 'bg-primary/10 border-primary scale-105'
+                              : 'bg-white border-secondary hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className={`text-[10px] font-bold uppercase ${selectedSlotIndex === idx ? 'text-primary' : 'text-slate-500'}`}>{day}</span>
                           <span className="text-[9px] text-slate-400 font-bold mt-1">10AM - 4PM</span>
-                        </div>
+                        </button>
                       ))
                     )}
                   </div>
                 </div>
 
                 {/* Booking Button */}
-                <button className="w-full bg-primary text-white py-4 rounded-2xl font-black text-sm hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5">
+                <button
+                  onClick={handleBook}
+                  className="w-full bg-primary text-white py-4 rounded-2xl font-black text-sm hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5"
+                >
                   <Calendar size={18} /> Book Appointment
                 </button>
               </div>
+
+              {/* SehatPulse Premium Booking Success Confirmed Overlay */}
+              {bookingSuccess ? (
+                <div className="absolute inset-0 bg-white/95 flex flex-col items-center justify-center p-8 space-y-4 z-50 rounded-[40px] text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                    className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center text-primary"
+                  >
+                    <ShieldCheck size={48} />
+                  </motion.div>
+                  <h3 className="text-2xl font-black text-text">Booking Confirmed!</h3>
+                  <p className="text-sm font-medium text-slate-500 max-w-xs">
+                    Your appointment is booked. Your shopping cart has been successfully emptied!
+                  </p>
+                  <div className="w-10 h-1 border-2 border-primary border-t-transparent rounded-full animate-spin mt-4" />
+                </div>
+              ) : null}
             </motion.div>
           </div>
         )}

@@ -88,4 +88,15 @@ router.delete('/remove/:productId', protect, async (req, res) => {
   }
 });
 
+// @desc    Clear user cart
+// @route   DELETE /api/cart/clear
+router.delete('/clear', protect, async (req, res) => {
+  try {
+    await Cart.findOneAndDelete({ user: req.user.userId });
+    res.json({ success: true, message: 'Cart cleared successfully', data: { items: [] } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 export default router;
