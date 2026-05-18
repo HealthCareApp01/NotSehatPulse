@@ -101,17 +101,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             }
           />
 
-          <Route
-            path="/medicines"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <PharmacyAndLabs />
-                </DashboardLayout>
-              </ProtectedRoute>
-            }
-          />
-
 
           <Route
             path="/labs"

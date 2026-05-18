@@ -2,6 +2,8 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import DoctorProfile from '../models/DoctorProfile.js';
+import PatientProfile from '../models/PatientProfile.js';
 
 const router = express.Router();
 
@@ -30,6 +32,15 @@ router.post('/signup', async (req, res) => {
     });
 
     await user.save();
+
+    // Auto-initialize profile document in separate collection based on role
+    if (user.role === 'Doctor') {
+      const doctorProfile = new DoctorProfile({ userId: user._id });
+      await doctorProfile.save();
+    } else if (user.role === 'Patient') {
+      const patientProfile = new PatientProfile({ userId: user._id });
+      await patientProfile.save();
+    }
 
     const token = jwt.sign(
       { userId: user._id, role: user.role },
