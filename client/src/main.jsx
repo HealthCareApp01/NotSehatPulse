@@ -17,6 +17,8 @@ import Pharmacy from './pages/Pharmacy';
 import Labs from './pages/Labs';
 import ProtectedRoute from './components/ProtectedRoute';
 import Appointment from './pages/Appointement';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminRoute from './components/AdminRoute';
 import './index.css';
 
 console.log("Hello from main.jsx");
@@ -35,6 +37,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/login" element={<Login />} />
 
           {/* Dashboard Routes */}
+          <Route
+            path="/admin-dashboard"
+            element={
+              <AdminRoute>
+                <DashboardLayout>
+                  <AdminDashboard />
+                </DashboardLayout>
+              </AdminRoute>
+            }
+          />
+
           <Route
             path="/doctor-dashboard"
             element={

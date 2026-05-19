@@ -28,11 +28,13 @@ export const fetchAppointments = createAsyncThunk(
 
 export const bookAppointment = createAsyncThunk(
   'appointments/bookAppointment',
-  async ({ doctorId, date, timeSlot }, { getState, dispatch, rejectWithValue }) => {
+  async ({ doctorId, date, timeSlot, razorpay_order_id, razorpay_payment_id, razorpay_signature }, { getState, rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/book`, { doctorId, date, timeSlot }, getAuthConfig(getState));
-      // Empty the local cart state instantly
-      dispatch(clearCartLocal());
+      const response = await axios.post(
+        `${API_URL}/book`,
+        { doctorId, date, timeSlot, razorpay_order_id, razorpay_payment_id, razorpay_signature },
+        getAuthConfig(getState)
+      );
       return response.data.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to book appointment');

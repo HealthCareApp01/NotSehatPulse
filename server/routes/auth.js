@@ -34,16 +34,32 @@ router.post('/signup', async (req, res) => {
     await user.save();
 
     // Auto-initialize profile document in separate collection based on role
+    let effectiveRole = user.role;
     if (user.role === 'Doctor') {
-      const doctorProfile = new DoctorProfile({ userId: user._id });
+      const doctorProfile = new DoctorProfile({
+        userId: user._id,
+        specialization: 'General Physician',
+        degree: 'M.B.B.S.',
+        experience: 5,
+        consultationFee: 500,
+        bio: 'Dedicated healthcare professional providing comprehensive medical services.',
+        availability: [
+          { day: 'Mon', slots: ['10:00 AM - 1:00 PM', '2:00 PM - 5:00 PM'] },
+          { day: 'Wed', slots: ['10:00 AM - 1:00 PM', '2:00 PM - 5:00 PM'] },
+          { day: 'Fri', slots: ['10:00 AM - 1:00 PM', '2:00 PM - 4:00 PM'] }
+        ],
+        verified: false
+      });
       await doctorProfile.save();
+      // An unverified doctor acts as a patient initially
+      effectiveRole = 'Patient';
     } else if (user.role === 'Patient') {
       const patientProfile = new PatientProfile({ userId: user._id });
       await patientProfile.save();
     }
 
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { userId: user._id, role: effectiveRole },
       process.env.JWT_SECRET || 'fallback_secret',
       { expiresIn: '7d' }
     );
@@ -56,7 +72,7 @@ router.post('/signup', async (req, res) => {
           id: user._id,
           name: user.name,
           email: user.email,
-          role: user.role,
+          role: effectiveRole,
         }
       }
     });
@@ -77,7 +93,7 @@ router.post('/login', async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ success: false, message: "Invalid credentials" });
+      return res.status(400).json({ success: false, message: "User doesn't exist. Please sign up." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -85,8 +101,14 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
+    // A doctor cannot login as a Doctor until verified; they must act as a Patient.
+    let effectiveRole = user.role;
+    if (user.role === 'Doctor' && !user.isVerified) {
+      effectiveRole = 'Patient';
+    }
+
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { userId: user._id, role: effectiveRole },
       process.env.JWT_SECRET || 'fallback_secret',
       { expiresIn: '7d' }
     );
@@ -99,7 +121,7 @@ router.post('/login', async (req, res) => {
           id: user._id,
           name: user.name,
           email: user.email,
-          role: user.role,
+          role: effectiveRole,
         }
       }
     });

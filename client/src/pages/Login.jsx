@@ -34,7 +34,8 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.role === 'Doctor') navigate('/doctor-dashboard', { replace: true });
+      if (user.role === 'Admin') navigate('/admin-dashboard', { replace: true });
+      else if (user.role === 'Doctor') navigate('/doctor-dashboard', { replace: true });
       else navigate('/patient-dashboard', { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
@@ -51,7 +52,8 @@ const Login = () => {
         const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
         if (res.data.success) {
           dispatch(loginSuccess({ user: res.data.data.user, token: res.data.data.token }));
-          if (res.data.data.user.role === 'Doctor') navigate('/doctor-dashboard', { replace: true });
+          if (res.data.data.user.role === 'Admin') navigate('/admin-dashboard', { replace: true });
+          else if (res.data.data.user.role === 'Doctor') navigate('/doctor-dashboard', { replace: true });
           else navigate('/patient-dashboard', { replace: true });
         }
       } catch (err) {

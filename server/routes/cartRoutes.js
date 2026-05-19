@@ -10,7 +10,8 @@ router.get('/', protect, async (req, res) => {
   try {
     let cart = await Cart.findOne({ user: req.user.userId }).populate('items.product');
     if (!cart) {
-      cart = await Cart.create({ user: req.user.userId, items: [] });
+      // Return a virtual empty cart structure without saving it to MongoDB
+      cart = { user: req.user.userId, items: [] };
     }
     res.json({ success: true, data: cart });
   } catch (error) {

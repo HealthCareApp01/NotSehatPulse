@@ -13,7 +13,8 @@ const orderSchema = new mongoose.Schema({
   totalAmount: { type: Number, required: true },
   status: { type: String, default: 'Pending' },
   address: { type: String },
-  paymentStatus: { type: String, default: 'Pending' }
+  paymentStatus: { type: String, default: 'Pending' },
+  paymentId: { type: String }
 }, { timestamps: true });
 
 export default mongoose.model('Order', orderSchema);

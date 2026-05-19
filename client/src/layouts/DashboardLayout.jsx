@@ -45,6 +45,7 @@ const DashboardLayout = ({ children }) => {
   };
 
   const getDashboardPath = () => {
+    if (user?.role === 'Admin') return '/admin-dashboard';
     return user?.role === 'Doctor' ? '/doctor-dashboard' : '/patient-dashboard';
   };
 
@@ -52,9 +53,9 @@ const DashboardLayout = ({ children }) => {
     if (location.pathname === '/medicines') return 'Search medicines, brands, or categories...';
     if (location.pathname === '/labs') return 'Search blood tests, checkups, or scans...';
     if (location.pathname === '/find-doctors') return 'Search Doctors, Specialists, etc...';
-    // if (location.pathname === '/appointments') return 'Search Appointments, Doctors, etc...';
-    // if (location.pathname === '/chat') return 'Search Chat, Messages, etc...';
-    // if (location.pathname === '/ai-symptom-checker') return 'Search AI Symptom Checker, etc...';
+    if (location.pathname === '/appointments') return 'Search Appointments, Doctors, etc...';
+    if (location.pathname === '/chat') return 'Search Chat, Messages, etc...';
+    if (location.pathname === '/ai-symptom-checker') return 'Search AI Symptom Checker, etc...';
     return 'Search appointments, doctors, reports...';
   };
 
@@ -64,12 +65,14 @@ const DashboardLayout = ({ children }) => {
 
   const sidebarItems = [
     { icon: <LayoutDashboard size={24} />, label: 'Dashboard', path: getDashboardPath() },
-    { icon: <Stethoscope size={24} />, label: 'Doctors', path: '/find-doctors' },
-    { icon: <Pill size={24} />, label: 'Pharmacy', path: '/pharmacy' },
-    { icon: <FlaskConical size={24} />, label: 'Lab Tests', path: '/labs' },
-    { icon: <Calendar size={24} />, label: 'Appointments', path: '/appointments' },
-    { icon: <MessageSquare size={24} />, label: 'Chat', path: '/chat' },
-    { icon: <PlusCircle size={24} />, label: 'AI Checker', path: '/ai-symptom-checker' },
+    ...(user?.role !== 'Admin' ? [
+      { icon: <Stethoscope size={24} />, label: 'Doctors', path: '/find-doctors' },
+      { icon: <Pill size={24} />, label: 'Pharmacy', path: '/pharmacy' },
+      { icon: <FlaskConical size={24} />, label: 'Lab Tests', path: '/labs' },
+      { icon: <Calendar size={24} />, label: 'Appointments', path: '/appointments' },
+      { icon: <MessageSquare size={24} />, label: 'Chat', path: '/chat' },
+      { icon: <PlusCircle size={24} />, label: 'AI Checker', path: '/ai-symptom-checker' },
+    ] : [])
   ];
 
 

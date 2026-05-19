@@ -42,6 +42,20 @@ const DoctorAvatar = ({ doctor, className }) => {
   );
 };
 
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 const FindDoctors = () => {
   const dispatch = useDispatch();
   const { token } = useSelector((state) => state.auth);
@@ -52,6 +66,8 @@ const FindDoctors = () => {
   const [activeDoctor, setActiveDoctor] = useState(null);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(0);
   const [error, setError] = useState('');
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
 
   const { bookingSuccess } = useSelector((state) => state.appointments);
 
@@ -108,8 +124,11 @@ const FindDoctors = () => {
     }
   };
 
-  const handleBook = () => {
+  const handleBook = async () => {
     if (!activeDoctor) return;
+    
+    setPaymentError('');
+    setPaymentLoading(true);
     
     let day = 'Mon';
     let timeSlot = '10:00 AM - 4:00 PM';
@@ -123,11 +142,82 @@ const FindDoctors = () => {
       day = defaultDays[selectedSlotIndex] || 'Mon';
     }
     
-    dispatch(bookAppointment({
-      doctorId: activeDoctor.userId?._id,
-      date: new Date(),
-      timeSlot: `${day} (${timeSlot})`
-    }));
+    const formattedSlot = `${day} (${timeSlot})`;
+
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        setPaymentError('Failed to load Razorpay SDK. Please check your connection.');
+        setPaymentLoading(false);
+        return;
+      }
+
+      const response = await axios.post(
+        'http://localhost:5000/api/appointments/pay/create-order',
+        { doctorId: activeDoctor.userId?._id },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      const { order, keyId } = response.data;
+
+      const options = {
+        key: keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'NotSehatPulse Healthcare',
+        description: `Consultation Booking - Dr. ${activeDoctor.userId?.name}`,
+        image: 'https://images.unsplash.com/photo-1559839734-2b71f1536780?auto=format&fit=crop&q=80&w=300&h=300',
+        order_id: order.id,
+        handler: async function (paymentResponse) {
+          try {
+            setPaymentLoading(true);
+            await dispatch(bookAppointment({
+              doctorId: activeDoctor.userId?._id,
+              date: new Date(),
+              timeSlot: formattedSlot,
+              razorpay_order_id: paymentResponse.razorpay_order_id,
+              razorpay_payment_id: paymentResponse.razorpay_payment_id,
+              razorpay_signature: paymentResponse.razorpay_signature
+            })).unwrap();
+          } catch (err) {
+            console.error('Booking confirmation failed:', err);
+            setPaymentError(err || 'Verification failed. Could not book appointment.');
+          } finally {
+            setPaymentLoading(false);
+          }
+        },
+        prefill: {
+          name: 'Patient Name',
+          email: 'patient@example.com'
+        },
+        theme: {
+          color: '#059669'
+        },
+        modal: {
+          ondismiss: function () {
+            setPaymentError('Payment cancelled. Appointment booking failed.');
+            setPaymentLoading(false);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      
+      rzp.on('payment.failed', function (resp) {
+        setPaymentError(`Payment failed: ${resp.error.description || 'Reason unknown'}`);
+        setPaymentLoading(false);
+      });
+
+      rzp.open();
+    } catch (err) {
+      console.error('Error in appointment payment flow:', err);
+      setPaymentError(err.response?.data?.message || 'Failed to initiate payment.');
+      setPaymentLoading(false);
+    }
   };
 
   return (
@@ -377,12 +467,26 @@ const FindDoctors = () => {
                   </div>
                 </div>
 
+                {/* Error Banner */}
+                {paymentError && (
+                  <div className="bg-rose-50 text-rose-600 border border-rose-100 p-4 rounded-2xl font-bold text-xs text-center animate-shake">
+                    ⚠️ {paymentError}
+                  </div>
+                )}
+
                 {/* Booking Button */}
                 <button
                   onClick={handleBook}
-                  className="w-full bg-primary text-white py-4 rounded-2xl font-black text-sm hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5"
+                  disabled={paymentLoading}
+                  className="w-full bg-primary disabled:bg-slate-300 text-white py-4 rounded-2xl font-black text-sm hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5"
                 >
-                  <Calendar size={18} /> Book Appointment
+                  {paymentLoading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Calendar size={18} /> Book Appointment (₹{activeDoctor.consultationFee || 500})
+                    </>
+                  )}
                 </button>
               </div>
 

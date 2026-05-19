@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { fetchAppointments } from '../store/slices/appointmentSlice';
 import { 
   Search, 
   Calendar, 
@@ -13,14 +14,24 @@ import {
   Heart
 } from 'lucide-react';
 
-const upcomingApts = [
-  { id: 1, dr: 'Dr. Sarah Johnson', spec: 'Cardiologist', date: 'Oct 15, 2026', time: '10:30 AM' },
-  { id: 2, dr: 'Dr. Michael Chen', spec: 'Dermatologist', date: 'Oct 18, 2026', time: '02:00 PM' },
-];
+const formatDate = (dateStr) => {
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch (err) {
+    return 'Upcoming';
+  }
+};
 
 const PatientDashboard = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const { appointments, loading } = useSelector((state) => state.appointments);
+
+  useEffect(() => {
+    dispatch(fetchAppointments());
+  }, [dispatch]);
 
   return (
     <div className="space-y-10">
@@ -73,32 +84,50 @@ const PatientDashboard = () => {
               <button className="text-primary font-bold text-sm hover:underline">View All</button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {upcomingApts.map((apt) => (
-                <div key={apt.id} className="bg-white p-6 rounded-[32px] border border-secondary shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all">
-                  <div className="flex gap-4 mb-6">
-                    <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-primary font-bold text-xl">
-                      {apt.dr.split(' ')[1][0]}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-text">{apt.dr}</h4>
-                      <p className="text-sm text-slate-400 font-medium">{apt.spec}</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 mb-8">
-                    <div className="flex-1 bg-secondary/50 p-3 rounded-2xl flex items-center gap-2">
-                      <Calendar size={16} className="text-primary" />
-                      <span className="text-xs font-bold text-text">{apt.date}</span>
-                    </div>
-                    <div className="flex-1 bg-secondary/50 p-3 rounded-2xl flex items-center gap-2">
-                      <Clock size={16} className="text-primary" />
-                      <span className="text-xs font-bold text-text">{apt.time}</span>
-                    </div>
-                  </div>
-                  <button className="w-full py-4 bg-primary text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-primary-dark transition-all shadow-lg shadow-primary/10">
-                    <Video size={18} /> Join Call
+              {loading ? (
+                <div className="col-span-full flex justify-center py-10">
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : appointments.length === 0 ? (
+                <div className="col-span-full bg-slate-50 text-slate-500 p-10 rounded-[32px] border border-secondary text-center space-y-4">
+                  <p className="font-bold text-sm">No upcoming consultations scheduled.</p>
+                  <button
+                    onClick={() => navigate('/find-doctors')}
+                    className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-primary-dark transition-colors cursor-pointer text-xs"
+                  >
+                    Find a Doctor
                   </button>
                 </div>
-              ))}
+              ) : (
+                appointments.slice(0, 4).map((apt) => (
+                  <div key={apt._id} className="bg-white p-6 rounded-[32px] border border-secondary shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="flex gap-4 mb-6">
+                        <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-primary font-bold text-xl uppercase">
+                          {apt.doctorId?.name ? apt.doctorId.name.split(' ').pop()[0] : 'D'}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-text">{apt.doctorId?.name || 'Verified Specialist'}</h4>
+                          <p className="text-sm text-slate-400 font-medium">{apt.doctorId?.specialization || 'General Physician'}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 mb-8">
+                        <div className="flex-1 bg-secondary/50 p-3 rounded-2xl flex items-center gap-2">
+                          <Calendar size={16} className="text-primary" />
+                          <span className="text-xs font-bold text-text">{formatDate(apt.date)}</span>
+                        </div>
+                        <div className="flex-1 bg-secondary/50 p-3 rounded-2xl flex items-center gap-2">
+                          <Clock size={16} className="text-primary" />
+                          <span className="text-xs font-bold text-text truncate max-w-[80px]" title={apt.timeSlot}>{apt.timeSlot || 'Scheduled'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button className="w-full py-4 bg-primary text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-primary-dark transition-all shadow-lg shadow-primary/10 cursor-pointer">
+                      <Video size={18} /> Join Call
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

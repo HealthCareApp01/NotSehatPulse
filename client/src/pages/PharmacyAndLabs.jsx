@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShoppingCart, 
@@ -13,11 +13,30 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMedicines, setSearchTerm } from '../store/slices/productSlice';
 import { fetchCart, addToCart, updateCartQuantity, removeFromCart, placeOrder, resetOrderSuccess } from '../store/slices/cartSlice';
+import axios from 'axios';
+
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 const PharmacyAndLabs = () => {
   const dispatch = useDispatch();
   const { medicines, loading: productsLoading, searchTerm } = useSelector((state) => state.products);
   const { cart, loading: cartLoading, orderSuccess } = useSelector((state) => state.cart);
+  const { token, user } = useSelector((state) => state.auth);
+
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
 
   useEffect(() => {
     dispatch(fetchMedicines(searchTerm));
@@ -54,18 +73,94 @@ const PharmacyAndLabs = () => {
     dispatch(removeFromCart(productId));
   };
 
-  const handlePlaceOrder = () => {
-    const orderData = {
-      items: cart.items.map(item => ({
-        name: item.product?.name,
-        price: item.product?.price,
-        quantity: item.quantity,
-        itemType: item.itemModel
-      })),
-      totalAmount: cartTotal,
-      address: 'Default Delivery Address'
-    };
-    dispatch(placeOrder(orderData));
+  const handlePlaceOrder = async () => {
+    if (cart.items.length === 0) return;
+
+    setPaymentError('');
+    setPaymentLoading(true);
+
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        setPaymentError('Failed to load Razorpay SDK. Please check your connection.');
+        setPaymentLoading(false);
+        return;
+      }
+
+      const response = await axios.post(
+        'http://localhost:5000/api/orders/pay/create-order',
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      const { order, keyId } = response.data;
+
+      const options = {
+        key: keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'NotSehatPulse Pharmacy',
+        description: 'Medicine & Labs Purchase',
+        image: 'https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&q=80&w=300&h=300',
+        order_id: order.id,
+        handler: async function (paymentResponse) {
+          try {
+            setPaymentLoading(true);
+
+            const orderData = {
+              items: cart.items.map(item => ({
+                name: item.product?.name,
+                price: item.product?.price,
+                quantity: item.quantity,
+                itemType: item.itemModel
+              })),
+              totalAmount: cartTotal,
+              address: 'Default Delivery Address',
+              razorpay_order_id: paymentResponse.razorpay_order_id,
+              razorpay_payment_id: paymentResponse.razorpay_payment_id,
+              razorpay_signature: paymentResponse.razorpay_signature
+            };
+
+            await dispatch(placeOrder(orderData)).unwrap();
+          } catch (err) {
+            console.error('Order placement failed:', err);
+            setPaymentError(err || 'Failed to verify payment and place order.');
+          } finally {
+            setPaymentLoading(false);
+          }
+        },
+        prefill: {
+          name: user?.name || 'Patient',
+          email: user?.email || 'patient@example.com'
+        },
+        theme: {
+          color: '#059669'
+        },
+        modal: {
+          ondismiss: function () {
+            setPaymentError('Payment cancelled. Items are still in your cart for retry.');
+            setPaymentLoading(false);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+
+      rzp.on('payment.failed', function (resp) {
+        setPaymentError(`Payment failed: ${resp.error.description || 'Reason unknown'}`);
+        setPaymentLoading(false);
+      });
+
+      rzp.open();
+    } catch (err) {
+      console.error('Error in cart checkout payment flow:', err);
+      setPaymentError(err.response?.data?.message || 'Failed to initiate payment.');
+      setPaymentLoading(false);
+    }
   };
 
   const cartTotal = cart.items.reduce((total, item) => {
@@ -208,12 +303,23 @@ const PharmacyAndLabs = () => {
                   <span className="text-slate-400 font-medium">Total Amount</span>
                   <span className="text-2xl font-black text-text">₹{cartTotal}</span>
                 </div>
+
+                {paymentError && (
+                  <div className="bg-rose-50 text-rose-600 border border-rose-100 p-4 rounded-2xl font-bold text-xs text-center animate-shake">
+                    ⚠️ {paymentError}
+                  </div>
+                )}
+
                 <button
                   onClick={handlePlaceOrder}
-                  disabled={cartLoading}
-                  className="w-full py-4 bg-primary text-white rounded-2xl font-bold transition-all shadow-xl shadow-primary/20 hover:bg-primary-dark flex items-center justify-center gap-2"
+                  disabled={cartLoading || paymentLoading}
+                  className="w-full py-4 bg-primary disabled:bg-slate-300 text-white rounded-2xl font-bold transition-all shadow-xl shadow-primary/20 hover:bg-primary-dark flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  {cartLoading ? <Loader2 className="animate-spin" size={20} /> : 'Place Order'}
+                  {cartLoading || paymentLoading ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : (
+                    'Place Order'
+                  )}
                 </button>
               </div>
             )}
