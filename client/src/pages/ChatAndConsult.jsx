@@ -17,7 +17,9 @@ import {
   User,
   MoreVertical,
   Sparkles,
-  Calendar
+  Calendar,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 
 const ChatAndConsult = () => {
@@ -34,6 +36,7 @@ const ChatAndConsult = () => {
   const [loadingRooms, setLoadingRooms] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDisclaimer, setShowDisclaimer] = useState(true);
 
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -137,6 +140,13 @@ const ChatAndConsult = () => {
       fetchMessages();
     }
   }, [activeRoom]);
+
+  // Reset disclaimer every time user opens a new chat room
+  useEffect(() => {
+    if (activeRoom) {
+      setShowDisclaimer(true);
+    }
+  }, [activeRoom?._id]);
 
   // 4. Auto scroll to bottom of chat
   useEffect(() => {
@@ -315,38 +325,70 @@ const ChatAndConsult = () => {
               </div>
 
               {/* Chat Message Window */}
-              <div className="flex-1 p-8 overflow-y-auto space-y-6">
-                {loadingMessages ? (
-                  <div className="flex justify-center items-center h-full">
-                    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : messages.length === 0 ? (
-                  <div className="flex flex-col justify-center items-center h-full text-slate-400 space-y-3">
-                    <MessageSquare size={48} className="text-slate-300" />
-                    <p className="font-bold text-sm">Send your first message to start the consultation!</p>
-                  </div>
-                ) : (
-                  messages.map((m) => {
-                    const isCurrentUser = m.senderId?._id === user.id;
-                    const msgTime = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                    return (
-                      <div key={m._id} className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-md p-5 rounded-[24px] text-sm font-medium ${
-                          isCurrentUser 
-                            ? 'bg-primary text-white shadow-lg shadow-primary/10' 
-                            : 'bg-secondary/50 text-text'
-                        }`}>
-                          {m.content}
-                          <span className={`block text-[10px] mt-2 ${isCurrentUser ? 'text-white/60' : 'text-slate-400'}`}>
-                            {msgTime}
-                          </span>
-                        </div>
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Emergency Disclaimer Banner */}
+                <AnimatePresence>
+                  {showDisclaimer && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -20, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: 'auto' }}
+                      exit={{ opacity: 0, y: -20, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="mx-6 mt-4 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex gap-3 items-start shadow-sm flex-shrink-0"
+                    >
+                      <AlertTriangle size={20} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-black text-amber-800 uppercase tracking-wider mb-1">⚠️ Medical Disclaimer</p>
+                        <p className="text-xs text-amber-700 leading-relaxed font-medium">
+                          This chat is for <strong>minor health advice and follow-ups only</strong>. If you are facing a medical emergency, please <strong>visit the nearest hospital immediately</strong> or call emergency services.
+                        </p>
                       </div>
-                    );
-                  })
-                )}
-                <div ref={messagesEndRef} />
+                      <button
+                        onClick={() => setShowDisclaimer(false)}
+                        title="I have read and understood the disclaimer"
+                        className="flex-shrink-0 flex flex-col items-center gap-1 text-amber-500 hover:text-amber-800 hover:bg-amber-100 px-2 py-1 rounded-xl transition-all cursor-pointer"
+                      >
+                        <X size={14} />
+                        <span className="text-[9px] font-black uppercase leading-none">Got it</span>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Messages List */}
+                <div className="flex-1 p-8 overflow-y-auto space-y-6">
+                  {loadingMessages ? (
+                    <div className="flex justify-center items-center h-full">
+                      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="flex flex-col justify-center items-center h-full text-slate-400 space-y-3">
+                      <MessageSquare size={48} className="text-slate-300" />
+                      <p className="font-bold text-sm">Send your first message to start the consultation!</p>
+                    </div>
+                  ) : (
+                    messages.map((m) => {
+                      const isCurrentUser = m.senderId?._id === user.id;
+                      const msgTime = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                      return (
+                        <div key={m._id} className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-md p-5 rounded-[24px] text-sm font-medium ${
+                            isCurrentUser 
+                              ? 'bg-primary text-white shadow-lg shadow-primary/10' 
+                              : 'bg-secondary/50 text-text'
+                          }`}>
+                            {m.content}
+                            <span className={`block text-[10px] mt-2 ${isCurrentUser ? 'text-white/60' : 'text-slate-400'}`}>
+                              {msgTime}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
               </div>
 
               {/* Messaging Input Box */}
