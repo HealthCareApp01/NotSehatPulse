@@ -12,6 +12,9 @@ import orderRoutes from './routes/orderRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 import appointmentRoutes from './routes/appointmentRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import subscriptionRoutes from './routes/subscriptionRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
+import Message from './models/Message.js';
 
 dotenv.config();
 
@@ -37,6 +40,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/chat', chatRoutes);
 
 // MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/healthcare';
@@ -72,7 +77,17 @@ io.on('connection', (socket) => {
   });
 
   // Real-time Chat
-  socket.on('send-message', (data) => {
+  socket.on('send-message', async (data) => {
+    try {
+      const { senderId, receiverId, content, roomId } = data;
+      if (senderId && receiverId && content && roomId) {
+        const newMessage = new Message({ senderId, receiverId, content, roomId });
+        await newMessage.save();
+        console.log(`[Socket] Message saved to DB: ${content.substring(0, 30)}...`);
+      }
+    } catch (err) {
+      console.error("[Socket] Message save error:", err);
+    }
     io.to(data.roomId).emit('receive-message', data);
   });
 
