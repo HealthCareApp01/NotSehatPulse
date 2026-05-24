@@ -334,7 +334,7 @@ const FindDoctors = () => {
 
         {/* Filter Pills */}
         <div className="flex flex-wrap gap-3 items-center">
-          <span className="text-slate-400 font-bold text-xs uppercase tracking-wider mr-2">Specialty:</span>
+          <span className="text-slate-400 font-bold text-xs uppercase tracking-wider mr-2">Speciality:</span>
           {specialties.map((spec) => (
             <button
               key={spec}
