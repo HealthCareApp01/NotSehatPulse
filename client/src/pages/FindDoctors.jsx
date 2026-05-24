@@ -38,7 +38,7 @@ const DoctorAvatar = ({ doctor, className }) => {
       src={getDoctorImage(doctor.specialization)}
       alt={doctor.userId?.name}
       onError={() => setImgError(true)}
-      className={className}
+      className={`block object-cover object-top ${className}`}
     />
   );
 };
@@ -393,10 +393,10 @@ const FindDoctors = () => {
               >
                 <div className="space-y-4">
                   {/* Doctor Card Top Banner/Image */}
-                  <div className="relative overflow-hidden rounded-2xl h-44 bg-slate-100">
+                  <div className="relative overflow-hidden rounded-2xl h-44 bg-slate-100 flex items-center justify-center">
                     <DoctorAvatar
                       doctor={doc}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1 text-xs font-black shadow-sm">
                       <Star size={14} className="text-yellow-400 fill-yellow-400" />
