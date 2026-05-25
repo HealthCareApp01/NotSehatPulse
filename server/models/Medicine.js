@@ -7,7 +7,8 @@ const medicineSchema = new mongoose.Schema({
   image: { type: String },
   stock: { type: Number, default: 10 },
   brand: { type: String },
-  category: { type: String }
+  category: { type: String },
+  tabletsPerPacket: { type: Number, default: 10 }
 }, { timestamps: true });
 
 export default mongoose.model('Medicine', medicineSchema);

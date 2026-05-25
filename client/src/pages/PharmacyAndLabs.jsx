@@ -8,9 +8,11 @@ import {
   ShoppingBag,
   CheckCircle,
   Loader2,
-  Search
+  Search,
+  Bot
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Link } from 'react-router-dom';
 import { fetchMedicines, setSearchTerm } from '../store/slices/productSlice';
 import { fetchCart, addToCart, updateCartQuantity, removeFromCart, placeOrder, resetOrderSuccess } from '../store/slices/cartSlice';
 import axios from 'axios';
@@ -169,11 +171,18 @@ const PharmacyAndLabs = () => {
 
   return (
     <div className="space-y-10">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-4xl font-black text-text">Pharmacy</h1>
           <p className="text-slate-500 mt-2">Get medicines delivered to your doorstep.</p>
         </div>
+        <Link 
+          to="/ai-symptom-checker"
+          className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-5 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all"
+        >
+          <Bot size={20} className="animate-pulse" />
+          Extract from Prescription
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
