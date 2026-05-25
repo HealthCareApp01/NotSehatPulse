@@ -118,16 +118,18 @@ const DashboardLayout = ({ children }) => {
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="h-20 bg-white border-b border-secondary flex items-center justify-between px-10">
-          <div className="flex items-center gap-4 bg-secondary/50 px-6 py-2.5 rounded-2xl w-96 border border-transparent focus-within:border-primary focus-within:bg-white transition-all">
-            <Search size={20} className="text-slate-400" />
-            <input
-              type="text"
-              placeholder={getSearchPlaceholder()}
-              value={searchTerm}
-              onChange={handleSearch}
-              className="bg-transparent outline-none w-full font-medium text-slate-600"
-            />
-          </div>
+          {!['/patient-dashboard', '/doctor-dashboard', '/admin-dashboard'].includes(location.pathname) && (
+            <div className="flex items-center gap-4 bg-secondary/50 px-6 py-2.5 rounded-2xl w-96 border border-transparent focus-within:border-primary focus-within:bg-white transition-all">
+              <Search size={20} className="text-slate-400" />
+              <input
+                type="text"
+                placeholder={getSearchPlaceholder()}
+                value={searchTerm}
+                onChange={handleSearch}
+                className="bg-transparent outline-none w-full font-medium text-slate-600"
+              />
+            </div>
+          )}
           <div className="flex items-center gap-6">
             <div className="text-right">
               <span className="block font-bold text-text">{user?.name || 'User'}</span>

@@ -58,7 +58,7 @@ router.get('/me', protect, async (req, res) => {
 // @access  Private
 router.put('/me', protect, async (req, res) => {
   try {
-    const { name, specialization, degree, experience, consultationFee, bio, availability, medicalHistory } = req.body;
+    const { name, specialization, degree, experience, consultationFee, subscriptionFee, bio, availability, medicalHistory } = req.body;
 
     const user = await User.findById(req.user.userId);
     if (!user) {
@@ -79,6 +79,7 @@ router.put('/me', protect, async (req, res) => {
       if (degree !== undefined) updateData.degree = degree;
       if (experience !== undefined) updateData.experience = experience;
       if (consultationFee !== undefined) updateData.consultationFee = consultationFee;
+      if (subscriptionFee !== undefined) updateData.subscriptionFee = subscriptionFee;
       if (bio !== undefined) updateData.bio = bio;
       if (availability !== undefined) updateData.availability = availability;
 

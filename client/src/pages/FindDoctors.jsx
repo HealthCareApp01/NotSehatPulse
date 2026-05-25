@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Clock, MapPin, X, ShieldCheck, DollarSign, Calendar, Sparkles } from 'lucide-react';
@@ -37,7 +38,7 @@ const DoctorAvatar = ({ doctor, className }) => {
       src={getDoctorImage(doctor.specialization)}
       alt={doctor.userId?.name}
       onError={() => setImgError(true)}
-      className={className}
+      className={`block object-cover object-top ${className}`}
     />
   );
 };
@@ -68,6 +69,8 @@ const FindDoctors = () => {
   const [error, setError] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState('');
+  const [subBookingSuccess, setSubBookingSuccess] = useState(false);
+  const navigate = useNavigate();
 
   const { bookingSuccess } = useSelector((state) => state.appointments);
 
@@ -220,6 +223,100 @@ const FindDoctors = () => {
     }
   };
 
+  const handleSubscribe = async () => {
+    if (!activeDoctor) return;
+    
+    setPaymentError('');
+    setPaymentLoading(true);
+    
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        setPaymentError('Failed to load Razorpay SDK. Please check your connection.');
+        setPaymentLoading(false);
+        return;
+      }
+
+      const response = await axios.post(
+        'http://localhost:5000/api/subscriptions/pay/create-order',
+        { doctorId: activeDoctor.userId?._id },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      const { order, keyId } = response.data;
+
+      const options = {
+        key: keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'NotSehatPulse Healthcare',
+        description: `Chat Subscription - Dr. ${activeDoctor.userId?.name}`,
+        image: 'https://images.unsplash.com/photo-1559839734-2b71f1536780?auto=format&fit=crop&q=80&w=300&h=300',
+        order_id: order.id,
+        handler: async function (paymentResponse) {
+          try {
+            setPaymentLoading(true);
+            const subRes = await axios.post(
+              'http://localhost:5000/api/subscriptions/subscribe',
+              {
+                doctorId: activeDoctor.userId?._id,
+                razorpay_order_id: paymentResponse.razorpay_order_id,
+                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                razorpay_signature: paymentResponse.razorpay_signature
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`
+                }
+              }
+            );
+
+            if (subRes.data.success) {
+              setSubBookingSuccess(true);
+            } else {
+              setPaymentError('Subscription creation failed on server.');
+            }
+          } catch (err) {
+            console.error('Subscription confirmation failed:', err);
+            setPaymentError(err.response?.data?.message || 'Verification failed. Could not register subscription.');
+          } finally {
+            setPaymentLoading(false);
+          }
+        },
+        prefill: {
+          name: 'Patient Name',
+          email: 'patient@example.com'
+        },
+        theme: {
+          color: '#059669'
+        },
+        modal: {
+          ondismiss: function () {
+            setPaymentError('Payment cancelled. Chat subscription booking failed.');
+            setPaymentLoading(false);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      
+      rzp.on('payment.failed', function (resp) {
+        setPaymentError(`Payment failed: ${resp.error.description || 'Reason unknown'}`);
+        setPaymentLoading(false);
+      });
+
+      rzp.open();
+    } catch (err) {
+      console.error('Error in subscription payment flow:', err);
+      setPaymentError(err.response?.data?.message || 'Failed to initiate subscription payment.');
+      setPaymentLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-10 max-w-7xl mx-auto px-4">
       {/* Header Banner */}
@@ -237,7 +334,7 @@ const FindDoctors = () => {
 
         {/* Filter Pills */}
         <div className="flex flex-wrap gap-3 items-center">
-          <span className="text-slate-400 font-bold text-xs uppercase tracking-wider mr-2">Specialty:</span>
+          <span className="text-slate-400 font-bold text-xs uppercase tracking-wider mr-2">Speciality:</span>
           {specialties.map((spec) => (
             <button
               key={spec}
@@ -296,10 +393,10 @@ const FindDoctors = () => {
               >
                 <div className="space-y-4">
                   {/* Doctor Card Top Banner/Image */}
-                  <div className="relative overflow-hidden rounded-2xl h-44 bg-slate-100">
+                  <div className="relative overflow-hidden rounded-2xl h-44 bg-slate-100 flex items-center justify-center">
                     <DoctorAvatar
                       doctor={doc}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1 text-xs font-black shadow-sm">
                       <Star size={14} className="text-yellow-400 fill-yellow-400" />
@@ -358,7 +455,7 @@ const FindDoctors = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 30 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="bg-white rounded-[40px] max-w-lg w-full overflow-hidden shadow-2xl relative border border-secondary flex flex-col"
+              className="bg-white rounded-[40px] max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl relative border border-secondary flex flex-col"
             >
               {/* Close Button */}
               <button
@@ -369,24 +466,26 @@ const FindDoctors = () => {
               </button>
 
               {/* Top Banner Cover */}
-              <div className="h-32 bg-primary/10 w-full" />
+              <div className="h-36 bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/30 w-full flex-shrink-0" />
 
               {/* Profile Details Container */}
-              <div className="px-8 pb-8 pt-0 relative -mt-16 flex-1 overflow-y-auto space-y-6">
+              <div className="px-8 pb-8 pt-0 relative -mt-14 flex-1 overflow-y-auto space-y-6">
                 {/* Profile Header Block */}
                 <div className="flex gap-5 items-end">
-                  <DoctorAvatar
-                    doctor={activeDoctor}
-                    className="w-28 h-28 rounded-3xl object-cover border-4 border-white shadow-md bg-slate-100"
-                  />
-                  <div className="pb-2 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-2xl font-black text-text leading-none">
+                  <div className="flex-shrink-0">
+                    <DoctorAvatar
+                      doctor={activeDoctor}
+                      className="w-24 h-24 rounded-3xl object-cover border-4 border-white shadow-lg bg-slate-100"
+                    />
+                  </div>
+                  <div className="pb-1 space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl font-black text-text leading-tight">
                         {activeDoctor.userId?.name}
                       </h2>
-                      {activeDoctor.verified && <ShieldCheck className="text-primary" size={20} />}
+                      {activeDoctor.verified && <ShieldCheck className="text-primary flex-shrink-0" size={18} />}
                     </div>
-                    <p className="text-primary font-bold text-sm tracking-wider uppercase">
+                    <p className="text-primary font-bold text-xs tracking-wider uppercase">
                       {activeDoctor.specialization || 'Verified Specialist'}
                     </p>
                     <p className="text-slate-400 font-bold text-xs">
@@ -467,6 +566,37 @@ const FindDoctors = () => {
                   </div>
                 </div>
 
+                {/* Chat Subscription Options */}
+                <div className="border-t border-secondary pt-6 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="text-primary animate-pulse" size={20} />
+                    <h4 className="text-sm font-black uppercase text-slate-500 tracking-wider">Direct Chat Subscription</h4>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-primary/5 to-primary/0 p-5 rounded-3xl border border-primary/10 space-y-3 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl -mr-8 -mt-8" />
+                    <div>
+                      <span className="text-xs font-black text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-wider">Premium Access</span>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Consult Dr. {activeDoctor.userId?.name} directly via real-time messaging for a whole month! Perfect for minor queries, follow-up advice, and prescription questions without booking fee repetition.
+                    </p>
+                    <div className="flex justify-between items-center pt-2">
+                      <div>
+                        <span className="block text-[10px] text-slate-400 font-bold uppercase">Pricing</span>
+                        <span className="text-xl font-black text-text">₹{activeDoctor.subscriptionFee || 999}<span className="text-xs text-slate-400 font-normal"> / month</span></span>
+                      </div>
+                      <button
+                        onClick={handleSubscribe}
+                        disabled={paymentLoading || subBookingSuccess}
+                        className="bg-primary hover:bg-primary-dark text-white px-5 py-3 rounded-2xl font-bold text-xs transition-all shadow-md shadow-primary/15 cursor-pointer"
+                      >
+                        Subscribe & Chat
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Error Banner */}
                 {paymentError && (
                   <div className="bg-rose-50 text-rose-600 border border-rose-100 p-4 rounded-2xl font-bold text-xs text-center animate-shake">
@@ -506,6 +636,34 @@ const FindDoctors = () => {
                     Your appointment is booked. Your shopping cart has been successfully emptied!
                   </p>
                   <div className="w-10 h-1 border-2 border-primary border-t-transparent rounded-full animate-spin mt-4" />
+                </div>
+              ) : null}
+
+              {/* SehatPulse Premium Subscription Success Confirmed Overlay */}
+              {subBookingSuccess ? (
+                <div className="absolute inset-0 bg-white/95 flex flex-col items-center justify-center p-8 space-y-4 z-50 rounded-[40px] text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                    className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center text-primary"
+                  >
+                    <Sparkles size={48} />
+                  </motion.div>
+                  <h3 className="text-2xl font-black text-text">Premium Subscription Active!</h3>
+                  <p className="text-sm font-medium text-slate-500 max-w-xs">
+                    You can now enjoy unlimited direct chat with Dr. {activeDoctor.userId?.name} for the next 30 days!
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSubBookingSuccess(false);
+                      setActiveDoctor(null);
+                      navigate('/chat', { state: { preSelectedDoctorId: activeDoctor.userId?._id } });
+                    }}
+                    className="mt-6 bg-primary text-white px-8 py-4 rounded-2xl font-black text-sm hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center gap-2 cursor-pointer"
+                  >
+                    Start Chatting Now <Sparkles size={16} />
+                  </button>
                 </div>
               ) : null}
             </motion.div>

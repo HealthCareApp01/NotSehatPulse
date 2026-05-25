@@ -7,7 +7,7 @@ const AppointmentSchema = new mongoose.Schema({
   timeSlot: { type: String, required: true },
   status: { 
     type: String, 
-    enum: ['Pending', 'Confirmed', 'Postponed', 'Completed', 'Cancelled'], 
+    enum: ['Pending', 'Confirmed', 'Postponed', 'Completed', 'Cancelled', 'Missed'], 
     default: 'Pending' 
   },
   paymentStatus: { 
@@ -16,6 +16,14 @@ const AppointmentSchema = new mongoose.Schema({
     default: 'Pending' 
   },
   paymentId: { type: String }, // Razorpay Payment ID
+  rescheduleHistory: [
+    {
+      originalDate: Date,
+      originalTimeSlot: String,
+      rescheduledAt: { type: Date, default: Date.now },
+      reason: String
+    }
+  ],
   createdAt: { type: Date, default: Date.now }
 });
 

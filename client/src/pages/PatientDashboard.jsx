@@ -77,6 +77,26 @@ const PatientDashboard = () => {
             </div>
           </div>
 
+          {/* Rescheduled Appointments Alerts */}
+          {appointments.filter(apt => apt.status === 'Postponed').length > 0 && (
+            <div className="space-y-4 mb-8">
+              {appointments.filter(apt => apt.status === 'Postponed').map(apt => (
+                <div key={apt._id} className="bg-gradient-to-r from-amber-500/10 to-amber-500/0 border border-amber-500/20 p-6 rounded-[28px] flex items-start gap-4 relative overflow-hidden">
+                  <div className="w-1.5 h-full bg-amber-500 absolute top-0 left-0" />
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-600 flex-shrink-0">
+                    <Calendar size={20} className="animate-bounce" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <span className="block font-black text-xs text-amber-800 uppercase tracking-widest">Rescheduled Appointment Alert</span>
+                    <p className="text-xs font-semibold text-amber-700 leading-relaxed">
+                      Your consultation with <span className="font-bold text-amber-900">{apt.doctorId?.name || 'Verified Specialist'}</span> was missed. We have automatically rescheduled it for <span className="font-bold text-amber-900">{formatDate(apt.date)}</span> during the slot <span className="font-bold text-amber-900">{apt.timeSlot.split('(').pop().replace(')', '') || 'Scheduled'}</span>!
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Upcoming Appointments */}
           <div>
             <div className="flex justify-between items-center mb-8">

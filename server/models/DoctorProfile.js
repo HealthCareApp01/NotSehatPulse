@@ -6,6 +6,7 @@ const DoctorProfileSchema = new mongoose.Schema({
   degree: { type: String },
   experience: { type: Number },
   consultationFee: { type: Number },
+  subscriptionFee: { type: Number, default: 999 },
   rating: { type: Number, default: 0 },
   bio: { type: String },
   availability: [

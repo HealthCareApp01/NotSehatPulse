@@ -95,6 +95,76 @@ router.post('/book', protect, async (req, res) => {
 // @route   GET /api/appointments/my
 router.get('/my', protect, async (req, res) => {
   try {
+    // Missed Appointment Self-Healing Scan
+    const now = new Date();
+    const missedApts = await Appointment.find({
+      $or: [
+        { patientId: req.user.userId },
+        { doctorId: req.user.userId }
+      ],
+      status: { $in: ['Pending', 'Confirmed'] },
+      date: { $lt: now }
+    });
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    for (const apt of missedApts) {
+      const doctorProfile = await DoctorProfile.findOne({ userId: apt.doctorId });
+      let rescheduled = false;
+
+      const availability = doctorProfile?.availability || [];
+      const docAvailability = availability.length > 0 ? availability : [
+        { day: 'Mon', slots: ['10:00 AM - 4:00 PM'] },
+        { day: 'Tue', slots: ['10:00 AM - 4:00 PM'] },
+        { day: 'Wed', slots: ['10:00 AM - 4:00 PM'] },
+        { day: 'Thu', slots: ['10:00 AM - 4:00 PM'] },
+        { day: 'Fri', slots: ['10:00 AM - 4:00 PM'] }
+      ];
+
+      const missedDate = new Date(apt.date);
+
+      for (let offset = 1; offset <= 6; offset++) {
+        const checkDate = new Date(missedDate);
+        checkDate.setDate(missedDate.getDate() + offset);
+
+        // Skip Sunday (getDay() === 0)
+        if (checkDate.getDay() === 0) {
+          continue;
+        }
+
+        const checkDayName = dayNames[checkDate.getDay()];
+        const slotForDay = docAvailability.find(a => a.day === checkDayName);
+
+        if (slotForDay && slotForDay.slots && slotForDay.slots.length > 0) {
+          const chosenSlot = slotForDay.slots[0];
+
+          // Push to history
+          apt.rescheduleHistory.push({
+            originalDate: apt.date,
+            originalTimeSlot: apt.timeSlot,
+            reason: 'Appointment missed - automatically rescheduled'
+          });
+
+          apt.date = checkDate;
+          apt.timeSlot = `${checkDayName} (${chosenSlot})`;
+          apt.status = 'Postponed'; // Postponed signifies rescheduled
+          await apt.save();
+          rescheduled = true;
+          break;
+        }
+      }
+
+      if (!rescheduled) {
+        apt.status = 'Cancelled';
+        apt.rescheduleHistory.push({
+          originalDate: apt.date,
+          originalTimeSlot: apt.timeSlot,
+          reason: 'Appointment missed - failed to auto-reschedule (no availability in next 6 days)'
+        });
+        await apt.save();
+      }
+    }
+
     // Find appointments where user is either patient or doctor
     const query = {
       $or: [
