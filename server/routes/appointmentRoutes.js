@@ -72,6 +72,7 @@ router.post('/book', protect, async (req, res) => {
       patientId: req.user.userId,
       doctorId,
       date: appointmentDate,
+      originalBookingDate: appointmentDate,
       timeSlot,
       status: 'Confirmed', // Automatically confirm for smooth demo
       paymentStatus: 'Completed',

@@ -4,6 +4,7 @@ const AppointmentSchema = new mongoose.Schema({
   patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   date: { type: Date, required: true },
+  originalBookingDate: { type: Date }, // Anchor for the 6-day reschedule window — set once, never updated
   timeSlot: { type: String, required: true },
   status: { 
     type: String, 

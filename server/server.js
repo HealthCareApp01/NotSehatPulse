@@ -163,13 +163,17 @@ cron.schedule('0 0 * * *', async () => {
         { day: 'Fri', slots: ['10:00 AM - 4:00 PM'] }
       ];
 
-      const missedDate = new Date(apt.date);
+      // Anchor the 6-day window to the ORIGINAL booking date, not the current (rescheduled) date
+      const anchorDate = new Date(apt.originalBookingDate || apt.date);
 
       for (let offset = 1; offset <= 6; offset++) {
-        const checkDate = new Date(missedDate);
-        checkDate.setDate(missedDate.getDate() + offset);
+        const checkDate = new Date(anchorDate);
+        checkDate.setDate(anchorDate.getDate() + offset);
 
         if (checkDate.getDay() === 0) continue; // Skip Sunday
+
+        // Skip dates that are already in the past
+        if (checkDate < today) continue;
 
         const checkDayName = dayNames[checkDate.getDay()];
         const slotForDay = docAvailability.find(a => a.day === checkDayName);
@@ -198,7 +202,7 @@ cron.schedule('0 0 * * *', async () => {
         apt.rescheduleHistory.push({
           originalDate: apt.date,
           originalTimeSlot: apt.timeSlot,
-          reason: 'Auto-reschedule failed (no availability in next 6 days)'
+          reason: 'Auto-reschedule failed (no availability within original 6-day window)'
         });
         await apt.save();
       }
