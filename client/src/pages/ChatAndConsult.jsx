@@ -220,8 +220,16 @@ const ChatAndConsult = () => {
             <div className="p-8 text-center text-slate-400 space-y-4">
               <MessageSquare size={36} className="mx-auto text-slate-300" />
               <p className="text-xs font-bold">No active conversations found.</p>
-              {role === 'patient' && (
-                <p className="text-[10px]">Book an appointment or subscribe to a doctor's chat plan to start messaging!</p>
+              {role === 'Patient' && (
+                <div className="pt-2">
+                  <p className="text-[10px] mb-3">Book an appointment or subscribe to the Health Chat plan to start messaging!</p>
+                  <button 
+                    onClick={() => navigate('/find-doctors')}
+                    className="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer w-full"
+                  >
+                    Subscribe to Health Chat — ₹299/mo
+                  </button>
+                </div>
               )}
             </div>
           ) : (
@@ -368,6 +376,17 @@ const ChatAndConsult = () => {
                     </div>
                   ) : (
                     messages.map((m) => {
+                      const isSystem = m.senderId === 'system' || m.senderId?._id === 'system';
+                      if (isSystem) {
+                        return (
+                          <div key={m._id} className="flex justify-center my-4">
+                            <div className="bg-amber-100 border border-amber-200 text-amber-800 px-4 py-2 rounded-xl text-xs font-bold text-center max-w-sm shadow-sm">
+                              {m.content}
+                            </div>
+                          </div>
+                        );
+                      }
+
                       const isCurrentUser = m.senderId?._id === user.id;
                       const msgTime = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -378,6 +397,14 @@ const ChatAndConsult = () => {
                               ? 'bg-primary text-white shadow-lg shadow-primary/10' 
                               : 'bg-secondary/50 text-text'
                           }`}>
+                            {!isCurrentUser && m.assignedDoctorId && m.assignedDoctorId.name && (
+                              <div className="text-xs font-black text-primary mb-2 border-b border-primary/20 pb-1 flex items-center gap-1.5">
+                                {m.assignedDoctorId.name} 
+                                <span className="text-[10px] text-slate-500 font-bold bg-white/50 px-1.5 py-0.5 rounded-md">
+                                  {m.assignedDoctorId.specialization}
+                                </span>
+                              </div>
+                            )}
                             {m.content}
                             <span className={`block text-[10px] mt-2 ${isCurrentUser ? 'text-white/60' : 'text-slate-400'}`}>
                               {msgTime}
@@ -431,7 +458,7 @@ const ChatAndConsult = () => {
             exit={{ width: 0, opacity: 0 }}
             className="bg-white border border-secondary rounded-[40px] overflow-hidden flex flex-col"
           >
-            {role === 'patient' ? (
+            {role === 'Patient' ? (
               /* Patient viewing Doctor details */
               <>
                 <div className="p-8 border-b border-secondary">

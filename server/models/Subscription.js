@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const SubscriptionSchema = new mongoose.Schema({
   patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  planType: { type: String, default: 'Platform' },
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
   status: { 

@@ -22,40 +22,34 @@ router.get('/rooms', protect, async (req, res) => {
     const roomsMap = new Map();
 
     if (user.role === 'Patient') {
-      // 1. Get doctors with active subscriptions
-      // Ensure expired subscriptions are updated first
+      // 1. Check for Active Platform Subscription
       await Subscription.updateMany(
         { status: 'Active', endDate: { $lt: new Date() } },
         { $set: { status: 'Expired' } }
       );
 
-      const activeSubscriptions = await Subscription.find({
+      const activeSubscription = await Subscription.findOne({
         patientId: userId,
+        planType: 'Platform',
         status: 'Active',
         endDate: { $gt: new Date() }
-      }).populate('doctorId', 'name email role');
+      });
 
-      for (const sub of activeSubscriptions) {
-        if (sub.doctorId) {
-          const docIdStr = sub.doctorId._id.toString();
-          const docProfile = await DoctorProfile.findOne({ userId: sub.doctorId._id });
-          roomsMap.set(docIdStr, {
-            partner: {
-              _id: sub.doctorId._id,
-              name: sub.doctorId.name,
-              email: sub.doctorId.email,
-              role: sub.doctorId.role,
-              specialization: docProfile?.specialization || 'Specialist',
-              bio: docProfile?.bio || '',
-              experience: docProfile?.experience || 0,
-              consultationFee: docProfile?.consultationFee || 500,
-              subscriptionFee: docProfile?.subscriptionFee || 999
-            },
-            type: 'Subscription',
-            endDate: sub.endDate,
-            roomId: `chat_${userId}_${docIdStr}`
-          });
-        }
+      if (activeSubscription) {
+        // Create the single "Health Chat" room for the patient
+        const roomId = `sub_chat_${userId}`;
+        roomsMap.set(roomId, {
+          partner: {
+            _id: 'system_health_chat',
+            name: 'Health Chat',
+            role: 'System',
+            specialization: 'Multiple Specialists',
+            bio: 'Smart chat that routes your queries to the right specialist based on your symptoms.',
+          },
+          type: 'Subscription',
+          endDate: activeSubscription.endDate,
+          roomId: roomId
+        });
       }
 
       // 2. Get doctors with confirmed appointments
@@ -67,10 +61,11 @@ router.get('/rooms', protect, async (req, res) => {
       for (const apt of confirmedAppointments) {
         if (apt.doctorId) {
           const docIdStr = apt.doctorId._id.toString();
-          // If they already have an active subscription room, keep it as Subscription (more privileged)
-          if (!roomsMap.has(docIdStr)) {
+          const roomId = `chat_${userId}_${docIdStr}`;
+          
+          if (!roomsMap.has(roomId)) {
             const docProfile = await DoctorProfile.findOne({ userId: apt.doctorId._id });
-            roomsMap.set(docIdStr, {
+            roomsMap.set(roomId, {
               partner: {
                 _id: apt.doctorId._id,
                 name: apt.doctorId.name,
@@ -80,44 +75,42 @@ router.get('/rooms', protect, async (req, res) => {
                 bio: docProfile?.bio || '',
                 experience: docProfile?.experience || 0,
                 consultationFee: docProfile?.consultationFee || 500,
-                subscriptionFee: docProfile?.subscriptionFee || 999
               },
               type: 'Appointment',
-              roomId: `chat_${userId}_${docIdStr}`
+              roomId: roomId
             });
           }
         }
       }
 
     } else if (user.role === 'Doctor') {
-      // 1. Get patients with active subscriptions
-      await Subscription.updateMany(
-        { status: 'Active', endDate: { $lt: new Date() } },
-        { $set: { status: 'Expired' } }
-      );
+      // 1. Get patients from Subscription messages routed to this doctor
+      // Find all distinct rooms where this doctor was assigned in a subscription chat
+      const assignedMessages = await Message.find({
+        assignedDoctorId: userId,
+        isSubscriptionChat: true
+      }).populate('senderId', 'name email role');
 
-      const activeSubscriptions = await Subscription.find({
-        doctorId: userId,
-        status: 'Active',
-        endDate: { $gt: new Date() }
-      }).populate('patientId', 'name email role');
-
-      for (const sub of activeSubscriptions) {
-        if (sub.patientId) {
-          const patIdStr = sub.patientId._id.toString();
-          roomsMap.set(patIdStr, {
-            partner: {
-              _id: sub.patientId._id,
-              name: sub.patientId.name,
-              email: sub.patientId.email,
-              role: sub.patientId.role,
-              age: 30, // Default placeholders for demographic details
-              history: 'Subscribed Patient'
-            },
-            type: 'Subscription',
-            endDate: sub.endDate,
-            roomId: `chat_${patIdStr}_${userId}`
-          });
+      // Add each unique patient room
+      for (const msg of assignedMessages) {
+        if (msg.senderId && msg.senderId.role === 'Patient') {
+          const patIdStr = msg.senderId._id.toString();
+          const roomId = msg.roomId; // sub_chat_{patientId}
+          
+          if (!roomsMap.has(roomId)) {
+            roomsMap.set(roomId, {
+              partner: {
+                _id: msg.senderId._id,
+                name: msg.senderId.name,
+                email: msg.senderId.email,
+                role: msg.senderId.role,
+                age: 30, // Placeholder
+                history: 'Subscribed Patient (Smart Routed)'
+              },
+              type: 'Subscription',
+              roomId: roomId
+            });
+          }
         }
       }
 
@@ -130,8 +123,10 @@ router.get('/rooms', protect, async (req, res) => {
       for (const apt of confirmedAppointments) {
         if (apt.patientId) {
           const patIdStr = apt.patientId._id.toString();
-          if (!roomsMap.has(patIdStr)) {
-            roomsMap.set(patIdStr, {
+          const roomId = `chat_${patIdStr}_${userId}`;
+          
+          if (!roomsMap.has(roomId)) {
+            roomsMap.set(roomId, {
               partner: {
                 _id: apt.patientId._id,
                 name: apt.patientId.name,
@@ -141,7 +136,7 @@ router.get('/rooms', protect, async (req, res) => {
                 history: 'Appointment Patient'
               },
               type: 'Appointment',
-              roomId: `chat_${patIdStr}_${userId}`
+              roomId: roomId
             });
           }
         }
@@ -184,13 +179,26 @@ router.get('/messages/:roomId', protect, async (req, res) => {
   try {
     const { roomId } = req.params;
 
+    // Populate assignedDoctorId so the UI knows which doctor answered in the sub chat
     const messages = await Message.find({ roomId })
       .sort({ timestamp: 1 })
-      .populate('senderId', 'name email role');
+      .populate('senderId', 'name email role')
+      .populate('assignedDoctorId', 'name');
+
+    // Attach specialization info to populated assignedDoctorId if present
+    const messagesWithSpec = [];
+    for (let msg of messages) {
+      const msgObj = msg.toObject();
+      if (msgObj.assignedDoctorId) {
+         const docProfile = await DoctorProfile.findOne({ userId: msgObj.assignedDoctorId._id });
+         msgObj.assignedDoctorId.specialization = docProfile?.specialization || 'Specialist';
+      }
+      messagesWithSpec.push(msgObj);
+    }
 
     res.json({
       success: true,
-      data: messages
+      data: messagesWithSpec
     });
   } catch (error) {
     console.error('Error fetching chat messages:', error);

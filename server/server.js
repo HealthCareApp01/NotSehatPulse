@@ -19,6 +19,7 @@ import Message from './models/Message.js';
 import cron from 'node-cron';
 import Appointment from './models/Appointment.js';
 import DoctorProfile from './models/DoctorProfile.js';
+import { detectSpecialization, assignDoctor } from './utils/keywordRouter.js';
 
 dotenv.config();
 
@@ -118,11 +119,61 @@ io.on('connection', (socket) => {
   // Real-time Chat
   socket.on('send-message', async (data) => {
     try {
-      const { senderId, receiverId, content, roomId } = data;
+      let { senderId, receiverId, content, roomId, senderRole } = data;
+      
+      let detectedSpecialization = null;
+      let assignedDoctorId = null;
+      let isSubscriptionChat = roomId.startsWith('sub_chat_');
+
+      if (isSubscriptionChat && senderRole === 'Patient') {
+        // 1. Detect specialization
+        detectedSpecialization = detectSpecialization(content);
+        
+        if (detectedSpecialization) {
+          // 2. Assign doctor
+          assignedDoctorId = await assignDoctor(detectedSpecialization);
+        }
+
+        // 3. Sticky routing if no new detection or no doctor found
+        if (!assignedDoctorId) {
+          const lastMsg = await Message.findOne({ roomId, senderId, assignedDoctorId: { $ne: null } }).sort({ timestamp: -1 });
+          if (lastMsg) {
+            assignedDoctorId = lastMsg.assignedDoctorId;
+          }
+        }
+
+        // Send system alert back if no doctor assigned at all
+        if (!assignedDoctorId) {
+           io.to(roomId).emit('receive-message', {
+             _id: Date.now().toString(),
+             senderId: 'system',
+             content: `⚠️ No doctor is currently available to handle this request. Please try again later.`,
+             roomId
+           });
+           return;
+        }
+
+        receiverId = assignedDoctorId; // Route specifically to this doctor
+      }
+
       if (senderId && receiverId && content && roomId) {
-        const newMessage = new Message({ senderId, receiverId, content, roomId });
+        const newMessage = new Message({ 
+          senderId, 
+          receiverId, 
+          content, 
+          roomId,
+          detectedSpecialization,
+          assignedDoctorId: isSubscriptionChat && senderRole === 'Patient' ? assignedDoctorId : (senderRole === 'Doctor' ? senderId : null),
+          isSubscriptionChat
+        });
         await newMessage.save();
         console.log(`[Socket] Message saved to DB: ${content.substring(0, 30)}...`);
+
+        // If it's a subscription chat, we also need to explicitly push this to the assigned doctor's personal room
+        // so their UI updates even if they haven't "clicked" the room yet.
+        if (isSubscriptionChat && senderRole === 'Patient' && assignedDoctorId) {
+           socket.to(assignedDoctorId.toString()).emit('receive-message', data);
+        }
       }
     } catch (err) {
       console.error("[Socket] Message save error:", err);

@@ -5,7 +5,10 @@ const MessageSchema = new mongoose.Schema({
   receiverId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   content: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
-  roomId: { type: String, required: true } // Can be appointmentId or composite of user IDs
+  roomId: { type: String, required: true }, // Can be appointmentId or composite of user IDs
+  detectedSpecialization: { type: String }, // e.g., 'Cardiologist'
+  assignedDoctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // The doctor assigned to respond
+  isSubscriptionChat: { type: Boolean, default: false } // True for platform health chat
 });
 
 export default mongoose.model('Message', MessageSchema);

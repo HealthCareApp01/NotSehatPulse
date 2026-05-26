@@ -12,18 +12,11 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET || 'iQDFb0ou7FKbi0xmuERWI6VQ'
 });
 
-// @desc    Create Razorpay Order for Chat Subscription
+// @desc    Create Razorpay Order for Platform Chat Subscription
 // @route   POST /api/subscriptions/pay/create-order
 router.post('/pay/create-order', protect, async (req, res) => {
   try {
-    const { doctorId } = req.body;
-
-    if (!doctorId) {
-      return res.status(400).json({ success: false, message: 'Doctor ID is required.' });
-    }
-
-    const doctorProfile = await DoctorProfile.findOne({ userId: doctorId });
-    const fee = doctorProfile?.subscriptionFee || 999;
+    const fee = 299; // Fixed platform subscription fee
 
     const options = {
       amount: Math.round(fee * 100), // in paise
@@ -44,13 +37,13 @@ router.post('/pay/create-order', protect, async (req, res) => {
   }
 });
 
-// @desc    Subscribe to a doctor (verify payment & register/extend subscription)
+// @desc    Subscribe to platform health chat
 // @route   POST /api/subscriptions/subscribe
 router.post('/subscribe', protect, async (req, res) => {
   try {
-    const { doctorId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-    if (!doctorId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({ success: false, message: 'All subscription and payment details are required.' });
     }
 
@@ -65,16 +58,15 @@ router.post('/subscribe', protect, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Payment verification failed. Invalid signature.' });
     }
 
-    const doctorProfile = await DoctorProfile.findOne({ userId: doctorId });
-    const fee = doctorProfile?.subscriptionFee || 999;
+    const fee = 299;
 
     const startDate = new Date();
     const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days validity
 
-    // Check if an active subscription already exists to extend or update it
+    // Check if an active platform subscription already exists to extend it
     let subscription = await Subscription.findOne({
       patientId: req.user.userId,
-      doctorId,
+      planType: 'Platform',
       status: 'Active',
       endDate: { $gt: new Date() }
     });
@@ -89,7 +81,7 @@ router.post('/subscribe', protect, async (req, res) => {
       // Create a brand new subscription
       subscription = new Subscription({
         patientId: req.user.userId,
-        doctorId,
+        planType: 'Platform',
         startDate,
         endDate,
         status: 'Active',
@@ -100,11 +92,11 @@ router.post('/subscribe', protect, async (req, res) => {
       await subscription.save();
     }
 
-    console.log(`✅ Subscription created/extended successfully! ID: ${subscription._id}`);
+    console.log(`✅ Platform Subscription created/extended successfully! ID: ${subscription._id}`);
 
     res.status(201).json({
       success: true,
-      message: 'Subscribed to doctor successfully.',
+      message: 'Subscribed to Health Chat successfully.',
       data: subscription
     });
   } catch (error) {
@@ -144,12 +136,10 @@ router.get('/my', protect, async (req, res) => {
   }
 });
 
-// @desc    Check active subscription with a specific doctor
-// @route   GET /api/subscriptions/check/:doctorId
-router.get('/check/:doctorId', protect, async (req, res) => {
+// @desc    Check active platform subscription
+// @route   GET /api/subscriptions/check/active
+router.get('/check/active', protect, async (req, res) => {
   try {
-    const { doctorId } = req.params;
-
     // Auto-update expired subscriptions status first
     await Subscription.updateMany(
       { status: 'Active', endDate: { $lt: new Date() } },
@@ -158,7 +148,7 @@ router.get('/check/:doctorId', protect, async (req, res) => {
 
     const subscription = await Subscription.findOne({
       patientId: req.user.userId,
-      doctorId,
+      planType: 'Platform',
       status: 'Active',
       endDate: { $gt: new Date() }
     });

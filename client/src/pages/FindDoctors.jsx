@@ -70,7 +70,8 @@ const FindDoctors = () => {
   const [error, setError] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState('');
-  const [subBookingSuccess, setSubBookingSuccess] = useState(false);
+  const [platformPaymentError, setPlatformPaymentError] = useState('');
+  const [platformSubSuccess, setPlatformSubSuccess] = useState(false);
   const navigate = useNavigate();
 
   const { bookingSuccess } = useSelector((state) => state.appointments);
@@ -240,23 +241,23 @@ const FindDoctors = () => {
     }
   };
 
-  const handleSubscribe = async () => {
-    if (!activeDoctor) return;
-    
-    setPaymentError('');
+
+
+  const handlePlatformSubscribe = async () => {
+    setPlatformPaymentError('');
     setPaymentLoading(true);
     
     try {
       const loaded = await loadRazorpayScript();
       if (!loaded) {
-        setPaymentError('Failed to load Razorpay SDK. Please check your connection.');
+        setPlatformPaymentError('Failed to load Razorpay SDK. Please check your connection.');
         setPaymentLoading(false);
         return;
       }
 
       const response = await axios.post(
         'http://localhost:5000/api/subscriptions/pay/create-order',
-        { doctorId: activeDoctor.userId?._id },
+        {},
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -270,8 +271,8 @@ const FindDoctors = () => {
         key: keyId,
         amount: order.amount,
         currency: order.currency,
-        name: 'NotSehatPulse Healthcare',
-        description: `Chat Subscription - Dr. ${activeDoctor.userId?.name}`,
+        name: 'NotSehatPulse Health Chat',
+        description: `Platform Chat Subscription (All Specialists)`,
         image: 'https://images.unsplash.com/photo-1559839734-2b71f1536780?auto=format&fit=crop&q=80&w=300&h=300',
         order_id: order.id,
         handler: async function (paymentResponse) {
@@ -280,7 +281,6 @@ const FindDoctors = () => {
             const subRes = await axios.post(
               'http://localhost:5000/api/subscriptions/subscribe',
               {
-                doctorId: activeDoctor.userId?._id,
                 razorpay_order_id: paymentResponse.razorpay_order_id,
                 razorpay_payment_id: paymentResponse.razorpay_payment_id,
                 razorpay_signature: paymentResponse.razorpay_signature
@@ -293,13 +293,13 @@ const FindDoctors = () => {
             );
 
             if (subRes.data.success) {
-              setSubBookingSuccess(true);
+              setPlatformSubSuccess(true);
             } else {
-              setPaymentError('Subscription creation failed on server.');
+              setPlatformPaymentError('Subscription creation failed on server.');
             }
           } catch (err) {
             console.error('Subscription confirmation failed:', err);
-            setPaymentError(err.response?.data?.message || 'Verification failed. Could not register subscription.');
+            setPlatformPaymentError(err.response?.data?.message || 'Verification failed. Could not register subscription.');
           } finally {
             setPaymentLoading(false);
           }
@@ -313,7 +313,7 @@ const FindDoctors = () => {
         },
         modal: {
           ondismiss: function () {
-            setPaymentError('Payment cancelled. Chat subscription booking failed.');
+            setPlatformPaymentError('Payment cancelled. Chat subscription booking failed.');
             setPaymentLoading(false);
           }
         }
@@ -322,14 +322,14 @@ const FindDoctors = () => {
       const rzp = new window.Razorpay(options);
       
       rzp.on('payment.failed', function (resp) {
-        setPaymentError(`Payment failed: ${resp.error.description || 'Reason unknown'}`);
+        setPlatformPaymentError(`Payment failed: ${resp.error.description || 'Reason unknown'}`);
         setPaymentLoading(false);
       });
 
       rzp.open();
     } catch (err) {
       console.error('Error in subscription payment flow:', err);
-      setPaymentError(err.response?.data?.message || 'Failed to initiate subscription payment.');
+      setPlatformPaymentError(err.response?.data?.message || 'Failed to initiate subscription payment.');
       setPaymentLoading(false);
     }
   };
@@ -344,6 +344,33 @@ const FindDoctors = () => {
           </h1>
           <p className="text-slate-500 mt-2">Book instant consultations with top rated specialists.</p>
         </div>
+      </div>
+
+      {/* Platform Subscription Banner */}
+      <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 p-6 rounded-[32px] flex flex-col items-stretch gap-4 shadow-sm">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <h2 className="text-xl font-black text-primary flex items-center gap-2">
+              ✨ Health Chat Plan — ₹299/month
+            </h2>
+            <p className="text-sm font-medium text-slate-600 mt-2 max-w-xl leading-relaxed">
+              Chat with specialists across all departments for minor health queries. 
+              Just type your symptoms, and our smart routing automatically assigns the right expert!
+            </p>
+          </div>
+          <button
+            onClick={handlePlatformSubscribe}
+            disabled={paymentLoading || platformSubSuccess}
+            className="bg-primary hover:bg-primary-dark text-white px-8 py-3.5 rounded-2xl font-bold transition-all shadow-lg shadow-primary/20 whitespace-nowrap"
+          >
+            {platformSubSuccess ? 'Subscribed ✓' : 'Subscribe Now →'}
+          </button>
+        </div>
+        {platformPaymentError && (
+          <div className="bg-rose-50 text-rose-600 border border-rose-100 p-3 rounded-xl font-bold text-xs animate-shake w-full mt-2">
+            ⚠️ {platformPaymentError}
+          </div>
+        )}
       </div>
 
       <div className="bg-white p-6 rounded-[32px] border border-secondary shadow-sm space-y-6">
@@ -583,36 +610,7 @@ const FindDoctors = () => {
                   </div>
                 </div>
 
-                {/* Chat Subscription Options */}
-                <div className="border-t border-secondary pt-6 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="text-primary animate-pulse" size={20} />
-                    <h4 className="text-sm font-black uppercase text-slate-500 tracking-wider">Direct Chat Subscription</h4>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-primary/5 to-primary/0 p-5 rounded-3xl border border-primary/10 space-y-3 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl -mr-8 -mt-8" />
-                    <div>
-                      <span className="text-xs font-black text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-wider">Premium Access</span>
-                    </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      Consult Dr. {activeDoctor.userId?.name} directly via real-time messaging for a whole month! Perfect for minor queries, follow-up advice, and prescription questions without booking fee repetition.
-                    </p>
-                    <div className="flex justify-between items-center pt-2">
-                      <div>
-                        <span className="block text-[10px] text-slate-400 font-bold uppercase">Pricing</span>
-                        <span className="text-xl font-black text-text">₹{activeDoctor.subscriptionFee || 999}<span className="text-xs text-slate-400 font-normal"> / month</span></span>
-                      </div>
-                      <button
-                        onClick={handleSubscribe}
-                        disabled={paymentLoading || subBookingSuccess}
-                        className="bg-primary hover:bg-primary-dark text-white px-5 py-3 rounded-2xl font-bold text-xs transition-all shadow-md shadow-primary/15 cursor-pointer"
-                      >
-                        Subscribe & Chat
-                      </button>
-                    </div>
-                  </div>
-                </div>
+
 
                 {/* Error Banner */}
                 {paymentError && (
@@ -657,7 +655,7 @@ const FindDoctors = () => {
               ) : null}
 
               {/* SehatPulse Premium Subscription Success Confirmed Overlay */}
-              {subBookingSuccess ? (
+              {platformSubSuccess ? (
                 <div className="absolute inset-0 bg-white/95 flex flex-col items-center justify-center p-8 space-y-4 z-50 rounded-[40px] text-center">
                   <motion.div
                     initial={{ scale: 0 }}
@@ -667,15 +665,15 @@ const FindDoctors = () => {
                   >
                     <Sparkles size={48} />
                   </motion.div>
-                  <h3 className="text-2xl font-black text-text">Premium Subscription Active!</h3>
+                  <h3 className="text-2xl font-black text-text">Health Chat Active!</h3>
                   <p className="text-sm font-medium text-slate-500 max-w-xs">
-                    You can now enjoy unlimited direct chat with Dr. {activeDoctor.userId?.name} for the next 30 days!
+                    You can now enjoy smart-routed direct chat for minor health queries for the next 30 days!
                   </p>
                   <button
                     onClick={() => {
-                      setSubBookingSuccess(false);
+                      setPlatformSubSuccess(false);
                       setActiveDoctor(null);
-                      navigate('/chat', { state: { preSelectedDoctorId: activeDoctor.userId?._id } });
+                      navigate('/chat');
                     }}
                     className="mt-6 bg-primary text-white px-8 py-4 rounded-2xl font-black text-sm hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center gap-2 cursor-pointer"
                   >

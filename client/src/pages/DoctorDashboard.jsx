@@ -248,22 +248,6 @@ const DoctorDashboard = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      Monthly Chat Subscription Fee (₹) <Sparkles className="text-primary" size={14} />
-                    </label>
-                    <input 
-                      type="number" 
-                      value={profile.subscriptionFee}
-                      onChange={(e) => setProfile({...profile, subscriptionFee: Number(e.target.value)})}
-                      placeholder="e.g. 999"
-                      className="w-full bg-secondary/50 border border-secondary focus:border-primary outline-none px-4 py-3 rounded-xl font-black text-sm text-text transition-all"
-                    />
-                    <p className="text-[10px] text-slate-400 mt-1.5">
-                      Define how much patients pay per month to subscribe to your direct messaging chat workspace.
-                    </p>
-                  </div>
-
-                  <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Bio</label>
                     <textarea 
                       value={profile.bio}
