@@ -19,6 +19,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Appointment from './pages/Appointement';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminRoute from './components/AdminRoute';
+import VideoConsultation from './pages/VideoConsultation';
 import './index.css';
 
 console.log("Hello from main.jsx");
@@ -28,11 +29,44 @@ window.onerror = function (message, source, lineno, colno, error) {
   console.log("GLOBAL ERROR:", message, error);
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+    this.setState({ errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '2rem', backgroundColor: '#fee2e2', minHeight: '100vh', color: '#991b1b' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Something went wrong.</h1>
+          <pre style={{ marginTop: '1rem', whiteSpace: 'pre-wrap', background: '#fef2f2', padding: '1rem' }}>
+            {this.state.error && this.state.error.toString()}
+            <br />
+            {this.state.errorInfo && this.state.errorInfo.componentStack}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <Provider store={store}>
-      <Router>
-        <Routes>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <Router>
+          <Routes>
           <Route path="/" element={<App />} />
           <Route path="/login" element={<Login />} />
 
@@ -135,9 +169,18 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               </ProtectedRoute>
             } />
 
+          <Route
+            path="/consultation/:roomId"
+            element={
+              <ProtectedRoute>
+                <VideoConsultation />
+              </ProtectedRoute>
+            } />
+
           <Route path="/contact-us" element={<ContactUs />} />
         </Routes>
       </Router>
     </Provider>
+    </ErrorBoundary>
   </React.StrictMode>
 );

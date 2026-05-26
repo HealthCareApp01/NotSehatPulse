@@ -16,6 +16,9 @@ import chatbotRoutes from './routes/chatbotRoutes.js';
 import subscriptionRoutes from './routes/subscriptionRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import Message from './models/Message.js';
+import cron from 'node-cron';
+import Appointment from './models/Appointment.js';
+import DoctorProfile from './models/DoctorProfile.js';
 
 dotenv.config();
 
@@ -68,15 +71,48 @@ io.on('connection', (socket) => {
 
   // WebRTC Signaling
   socket.on('offer', (data) => {
+    console.log(`[Socket] Offer sent to room ${data.roomId}`);
     socket.to(data.roomId).emit('offer', data.offer);
   });
 
   socket.on('answer', (data) => {
+    console.log(`[Socket] Answer sent to room ${data.roomId}`);
     socket.to(data.roomId).emit('answer', data.answer);
   });
 
   socket.on('ice-candidate', (data) => {
+    // Too noisy to log every candidate
     socket.to(data.roomId).emit('ice-candidate', data.candidate);
+  });
+
+  // WebRTC Consultation Queue Signaling
+  socket.on('join-user-room', (userId) => {
+    socket.join(userId);
+    console.log(`[Socket] User ${userId} joined their personal room`);
+  });
+
+  socket.on('doctor-calling', (data) => {
+    console.log(`[Socket] Doctor calling patient ${data.patientId} in room ${data.roomId}`);
+    socket.to(data.patientId).emit('incoming-call', data);
+  });
+
+  socket.on('patient-joined', (data) => {
+    console.log(`[Socket] Patient joined room ${data.roomId}`);
+    socket.to(data.roomId).emit('patient-joined-room', data);
+  });
+
+  socket.on('new-appointment', (doctorId) => {
+    socket.to(doctorId).emit('new-appointment-booked');
+  });
+
+  socket.on('end-call', (data) => {
+    console.log(`[Socket] End call emitted for room ${data.roomId}`);
+    socket.to(data.roomId).emit('call-ended');
+  });
+
+  socket.on('call-declined', (data) => {
+    console.log(`[Socket] Call declined by patient for room ${data.roomId}`);
+    socket.to(data.roomId).emit('call-declined');
   });
 
   // Real-time Chat
@@ -98,6 +134,105 @@ io.on('connection', (socket) => {
     console.log('User disconnected:', socket.id);
   });
 });
+
+// Midnight Cron Job for Rescheduling
+cron.schedule('0 0 * * *', async () => {
+  console.log('[Cron] Running midnight check for doctor-requested reschedules...');
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const pendingReschedules = await Appointment.find({
+      doctorRequestedReschedule: true,
+      status: { $in: ['Confirmed', 'Pending'] },
+      date: { $lte: today }
+    });
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    for (const apt of pendingReschedules) {
+      const doctorProfile = await DoctorProfile.findOne({ userId: apt.doctorId });
+      let rescheduled = false;
+
+      const availability = doctorProfile?.availability || [];
+      const docAvailability = availability.length > 0 ? availability : [
+        { day: 'Mon', slots: ['10:00 AM - 4:00 PM'] },
+        { day: 'Tue', slots: ['10:00 AM - 4:00 PM'] },
+        { day: 'Wed', slots: ['10:00 AM - 4:00 PM'] },
+        { day: 'Thu', slots: ['10:00 AM - 4:00 PM'] },
+        { day: 'Fri', slots: ['10:00 AM - 4:00 PM'] }
+      ];
+
+      const missedDate = new Date(apt.date);
+
+      for (let offset = 1; offset <= 6; offset++) {
+        const checkDate = new Date(missedDate);
+        checkDate.setDate(missedDate.getDate() + offset);
+
+        if (checkDate.getDay() === 0) continue; // Skip Sunday
+
+        const checkDayName = dayNames[checkDate.getDay()];
+        const slotForDay = docAvailability.find(a => a.day === checkDayName);
+
+        if (slotForDay && slotForDay.slots && slotForDay.slots.length > 0) {
+          const chosenSlot = slotForDay.slots[0];
+
+          apt.rescheduleHistory.push({
+            originalDate: apt.date,
+            originalTimeSlot: apt.timeSlot,
+            reason: 'Auto-rescheduled at midnight'
+          });
+
+          apt.date = checkDate;
+          apt.timeSlot = `${checkDayName} (${chosenSlot})`;
+          apt.doctorRequestedReschedule = false;
+          apt.status = 'Postponed';
+          await apt.save();
+          rescheduled = true;
+          break;
+        }
+      }
+
+      if (!rescheduled) {
+        apt.status = 'Cancelled';
+        apt.rescheduleHistory.push({
+          originalDate: apt.date,
+          originalTimeSlot: apt.timeSlot,
+          reason: 'Auto-reschedule failed (no availability in next 6 days)'
+        });
+        await apt.save();
+      }
+    }
+    console.log(`[Cron] Auto-rescheduled ${pendingReschedules.length} appointments.`);
+  } catch (err) {
+    console.error('[Cron] Error running reschedule job:', err);
+  }
+}, { timezone: 'Asia/Kolkata' });
+
+// 6 PM IST Cron Job for Unattended Appointments
+cron.schedule('0 18 * * *', async () => {
+  console.log('[Cron] Running 6 PM check for leftover appointments...');
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const leftoverApts = await Appointment.find({
+      status: 'Confirmed',
+      date: { $gte: today, $lt: tomorrow },
+      doctorRequestedReschedule: false
+    });
+
+    for (const apt of leftoverApts) {
+      apt.doctorRequestedReschedule = true;
+      await apt.save();
+    }
+    console.log(`[Cron] Flagged ${leftoverApts.length} leftover appointments for reschedule.`);
+  } catch (err) {
+    console.error('[Cron] Error running 6 PM leftover job:', err);
+  }
+}, { timezone: 'Asia/Kolkata' });
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {

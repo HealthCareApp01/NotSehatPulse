@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Clock, MapPin, X, ShieldCheck, DollarSign, Calendar, Sparkles } from 'lucide-react';
 import { setSearchTerm } from '../store/slices/productSlice';
 import { bookAppointment, resetBookingSuccess } from '../store/slices/appointmentSlice';
+import { io } from 'socket.io-client';
 
 const specialties = ['All', 'Cardiologist', 'Dermatologist', 'Pediatrician', 'Neurologist'];
 
@@ -74,6 +75,18 @@ const FindDoctors = () => {
 
   const { bookingSuccess } = useSelector((state) => state.appointments);
 
+  const upcomingDates = React.useMemo(() => {
+    const dates = [];
+    const current = new Date();
+    while (dates.length < 6) {
+      if (current.getDay() !== 0) {
+        dates.push(new Date(current));
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
+  }, []);
+
   // When a new doctor is clicked, reset the selected slot
   useEffect(() => {
     setSelectedSlotIndex(0);
@@ -133,19 +146,19 @@ const FindDoctors = () => {
     setPaymentError('');
     setPaymentLoading(true);
     
-    let day = 'Mon';
+    const selectedDate = upcomingDates[selectedSlotIndex] || new Date();
+    const dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'short' });
+    
     let timeSlot = '10:00 AM - 4:00 PM';
     
     if (activeDoctor.availability && activeDoctor.availability.length > 0) {
-      const sched = activeDoctor.availability[selectedSlotIndex];
-      day = sched.day;
-      timeSlot = sched.slots && sched.slots.length > 0 ? sched.slots[0] : '10:00 AM - 4:00 PM';
-    } else {
-      const defaultDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-      day = defaultDays[selectedSlotIndex] || 'Mon';
+      const sched = activeDoctor.availability.find(a => a.day === dayName);
+      if (sched && sched.slots && sched.slots.length > 0) {
+        timeSlot = sched.slots[0];
+      }
     }
     
-    const formattedSlot = `${day} (${timeSlot})`;
+    const formattedSlot = `${dayName} (${timeSlot})`;
 
     try {
       const loaded = await loadRazorpayScript();
@@ -180,12 +193,16 @@ const FindDoctors = () => {
             setPaymentLoading(true);
             await dispatch(bookAppointment({
               doctorId: activeDoctor.userId?._id,
-              date: new Date(),
+              date: selectedDate,
               timeSlot: formattedSlot,
               razorpay_order_id: paymentResponse.razorpay_order_id,
               razorpay_payment_id: paymentResponse.razorpay_payment_id,
               razorpay_signature: paymentResponse.razorpay_signature
             })).unwrap();
+            
+            const socket = window.socketRef || io('http://localhost:5000');
+            socket.emit('new-appointment', activeDoctor.userId?._id);
+            
           } catch (err) {
             console.error('Booking confirmation failed:', err);
             setPaymentError(err || 'Verification failed. Could not book appointment.');
@@ -530,39 +547,39 @@ const FindDoctors = () => {
                 <div className="space-y-3">
                   <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">Select Availability Slot</h4>
                   <div className="flex flex-wrap gap-2">
-                    {activeDoctor.availability && activeDoctor.availability.length > 0 ? (
-                      activeDoctor.availability.map((sched, idx) => (
+                    {upcomingDates.map((dateObj, idx) => {
+                      const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                      const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                      let timeSlot = '10:00 AM - 4:00 PM';
+                      
+                      if (activeDoctor.availability && activeDoctor.availability.length > 0) {
+                        const sched = activeDoctor.availability.find(a => a.day === dayName);
+                        if (sched && sched.slots && sched.slots.length > 0) {
+                          timeSlot = sched.slots[0];
+                        } else {
+                          timeSlot = 'Unavailable';
+                        }
+                      }
+
+                      return (
                         <button
                           key={idx}
-                          onClick={() => setSelectedSlotIndex(idx)}
-                          className={`border p-3 rounded-xl flex flex-col items-center min-w-[90px] shadow-sm cursor-pointer transition-all ${
+                          onClick={() => timeSlot !== 'Unavailable' && setSelectedSlotIndex(idx)}
+                          disabled={timeSlot === 'Unavailable'}
+                          className={`border p-3 rounded-xl flex flex-col items-center min-w-[90px] shadow-sm transition-all ${
+                            timeSlot === 'Unavailable' ? 'opacity-50 cursor-not-allowed bg-slate-50' : 
                             selectedSlotIndex === idx
-                              ? 'bg-primary/10 border-primary scale-105'
-                              : 'bg-white border-secondary hover:bg-slate-50'
+                              ? 'bg-primary/10 border-primary scale-105 cursor-pointer'
+                              : 'bg-white border-secondary hover:bg-slate-50 cursor-pointer'
                           }`}
                         >
-                          <span className={`text-[10px] font-bold uppercase ${selectedSlotIndex === idx ? 'text-primary' : 'text-slate-500'}`}>{sched.day}</span>
+                          <span className={`text-[10px] font-bold uppercase ${selectedSlotIndex === idx ? 'text-primary' : 'text-slate-500'}`}>{dayName}, {dateStr}</span>
                           <span className="text-[9px] text-slate-400 font-bold mt-1 uppercase">
-                            {sched.slots && sched.slots.length > 0 ? `${sched.slots[0]}` : '9AM - 5PM'}
+                            {timeSlot}
                           </span>
                         </button>
-                      ))
-                    ) : (
-                      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, idx) => (
-                        <button
-                          key={day}
-                          onClick={() => setSelectedSlotIndex(idx)}
-                          className={`border px-4 py-2.5 rounded-xl flex flex-col items-center min-w-[80px] cursor-pointer transition-all ${
-                            selectedSlotIndex === idx
-                              ? 'bg-primary/10 border-primary scale-105'
-                              : 'bg-white border-secondary hover:bg-slate-50'
-                          }`}
-                        >
-                          <span className={`text-[10px] font-bold uppercase ${selectedSlotIndex === idx ? 'text-primary' : 'text-slate-500'}`}>{day}</span>
-                          <span className="text-[9px] text-slate-400 font-bold mt-1">10AM - 4PM</span>
-                        </button>
-                      ))
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
 

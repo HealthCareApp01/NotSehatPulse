@@ -10,10 +10,13 @@ import {
   PlusCircle,
   Stethoscope,
   Pill,
-  FlaskConical
+  FlaskConical,
+  PhoneCall,
+  Video
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
+import { io } from 'socket.io-client';
 import { logout } from '../store/slices/authSlice';
 import { setSearchTerm } from '../store/slices/productSlice';
 
@@ -37,7 +40,98 @@ const DashboardLayout = ({ children }) => {
   const dispatch = useDispatch();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { searchTerm } = useSelector((state) => state.products);
+  const [incomingCall, setIncomingCall] = React.useState(null);
+  const [callTimer, setCallTimer] = React.useState(600); // 10 minutes
 
+  // Web Audio API Ringtone
+  const audioCtxRef = React.useRef(null);
+  const ringIntervalRef = React.useRef(null);
+
+  const startRinging = React.useCallback(() => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const ctx = audioCtxRef.current;
+    
+    if (ringIntervalRef.current) clearInterval(ringIntervalRef.current);
+
+    const playRing = () => {
+      const playTone = (freq, startOffset, duration) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.value = freq; 
+
+        gain.gain.setValueAtTime(0, ctx.currentTime + startOffset);
+        gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + startOffset + 0.05);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + startOffset + duration - 0.05);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + startOffset + duration);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(ctx.currentTime + startOffset);
+        osc.stop(ctx.currentTime + startOffset + duration);
+      };
+
+      // Play a quick digital melody (e.g. 800Hz, 1000Hz, 1200Hz)
+      playTone(800, 0, 0.15);
+      playTone(1000, 0.2, 0.15);
+      playTone(1200, 0.4, 0.4);
+      
+      playTone(800, 1.0, 0.15);
+      playTone(1000, 1.2, 0.15);
+      playTone(1200, 1.4, 0.4);
+    };
+
+    playRing();
+    ringIntervalRef.current = setInterval(playRing, 3500);
+  }, []);
+
+  const stopRinging = React.useCallback(() => {
+    if (ringIntervalRef.current) {
+      clearInterval(ringIntervalRef.current);
+      ringIntervalRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user && user.role === 'Patient') {
+      const socket = io('http://localhost:5000');
+      socket.emit('join-user-room', user.id || user._id);
+      
+      socket.on('incoming-call', (data) => {
+        setIncomingCall(data);
+        setCallTimer(600);
+      });
+
+      return () => socket.disconnect();
+    }
+  }, [user]);
+
+  // Timer Effect
+  useEffect(() => {
+    let interval;
+    if (incomingCall && callTimer > 0) {
+      interval = setInterval(() => setCallTimer(prev => prev - 1), 1000);
+    } else if (callTimer === 0 && incomingCall) {
+      setIncomingCall(null);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [incomingCall, callTimer]);
+
+  // Ringing Effect
+  useEffect(() => {
+    if (incomingCall) {
+      startRinging();
+    } else {
+      stopRinging();
+    }
+    return () => stopRinging();
+  }, [incomingCall, startRinging, stopRinging]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -77,7 +171,37 @@ const DashboardLayout = ({ children }) => {
 
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 overflow-hidden relative">
+      {/* Incoming Call Modal */}
+      {incomingCall && (
+        <div className="absolute inset-0 z-[100] bg-black/60 flex items-center justify-center backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white p-8 rounded-[32px] shadow-2xl max-w-sm w-full text-center border-4 border-primary">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto mb-6 animate-pulse">
+              <PhoneCall size={40} />
+            </div>
+            <h2 className="text-2xl font-black text-text mb-2">Doctor is Calling!</h2>
+            <p className="text-slate-500 font-bold mb-6">Join the consultation room now.</p>
+            <div className="text-4xl font-black text-rose-500 mb-8 font-mono">
+              {Math.floor(callTimer / 60)}:{(callTimer % 60).toString().padStart(2, '0')}
+            </div>
+            <div className="flex gap-4">
+              <button onClick={() => {
+                const socket = io('http://localhost:5000');
+                socket.emit('call-declined', { roomId: incomingCall.roomId });
+                setIncomingCall(null);
+                setTimeout(() => socket.disconnect(), 500);
+              }} className="flex-1 bg-slate-100 text-slate-600 font-bold py-3 rounded-2xl hover:bg-slate-200 transition">Decline</button>
+              <button onClick={() => {
+                navigate(`/consultation/${incomingCall.roomId}?patientId=${user.id || user._id}&apptId=${incomingCall.apptId}`);
+                setIncomingCall(null);
+              }} className="flex-1 bg-primary text-white font-bold py-3 rounded-2xl hover:bg-primary-dark transition shadow-lg shadow-primary/30 flex justify-center items-center gap-2">
+                <Video size={20} /> Join Call
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside className="w-24 bg-white border-r border-secondary flex flex-col items-center py-8 gap-8">
         <button

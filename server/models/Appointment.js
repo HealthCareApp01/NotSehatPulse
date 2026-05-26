@@ -24,6 +24,8 @@ const AppointmentSchema = new mongoose.Schema({
       reason: String
     }
   ],
+  doctorRequestedReschedule: { type: Boolean, default: false },
+  queuePosition: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
 

@@ -21,6 +21,7 @@
     "jsonwebtoken": "^9.0.2",
     "langchain": "^0.1.36",
     "mongoose": "^8.3.2",
+    "node-cron": "^4.2.1",
     "razorpay": "^2.9.2",
     "socket.io": "^4.7.5",
     "tesseract.js": "^7.0.0"

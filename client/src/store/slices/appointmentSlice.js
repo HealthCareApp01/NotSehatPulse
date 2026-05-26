@@ -42,6 +42,54 @@ export const bookAppointment = createAsyncThunk(
   }
 );
 
+export const markConsulted = createAsyncThunk(
+  'appointments/markConsulted',
+  async (appointmentId, { getState, rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${API_URL}/${appointmentId}/consulted`, {}, getAuthConfig(getState));
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to mark as consulted');
+    }
+  }
+);
+
+export const requestReschedule = createAsyncThunk(
+  'appointments/requestReschedule',
+  async (appointmentId, { getState, rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${API_URL}/${appointmentId}/request-reschedule`, {}, getAuthConfig(getState));
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to request reschedule');
+    }
+  }
+);
+
+export const patientReschedule = createAsyncThunk(
+  'appointments/patientReschedule',
+  async ({ appointmentId, newDate, newTimeSlot }, { getState, rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${API_URL}/${appointmentId}/patient-reschedule`, { newDate, newTimeSlot }, getAuthConfig(getState));
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to reschedule');
+    }
+  }
+);
+
+export const moveToLast = createAsyncThunk(
+  'appointments/moveToLast',
+  async (appointmentId, { getState, rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${API_URL}/${appointmentId}/move-to-last`, {}, getAuthConfig(getState));
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to move to last');
+    }
+  }
+);
+
 const initialState = {
   appointments: [],
   loading: false,

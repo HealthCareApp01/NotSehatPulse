@@ -95,75 +95,6 @@ router.post('/book', protect, async (req, res) => {
 // @route   GET /api/appointments/my
 router.get('/my', protect, async (req, res) => {
   try {
-    // Missed Appointment Self-Healing Scan
-    const now = new Date();
-    const missedApts = await Appointment.find({
-      $or: [
-        { patientId: req.user.userId },
-        { doctorId: req.user.userId }
-      ],
-      status: { $in: ['Pending', 'Confirmed'] },
-      date: { $lt: now }
-    });
-
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    for (const apt of missedApts) {
-      const doctorProfile = await DoctorProfile.findOne({ userId: apt.doctorId });
-      let rescheduled = false;
-
-      const availability = doctorProfile?.availability || [];
-      const docAvailability = availability.length > 0 ? availability : [
-        { day: 'Mon', slots: ['10:00 AM - 4:00 PM'] },
-        { day: 'Tue', slots: ['10:00 AM - 4:00 PM'] },
-        { day: 'Wed', slots: ['10:00 AM - 4:00 PM'] },
-        { day: 'Thu', slots: ['10:00 AM - 4:00 PM'] },
-        { day: 'Fri', slots: ['10:00 AM - 4:00 PM'] }
-      ];
-
-      const missedDate = new Date(apt.date);
-
-      for (let offset = 1; offset <= 6; offset++) {
-        const checkDate = new Date(missedDate);
-        checkDate.setDate(missedDate.getDate() + offset);
-
-        // Skip Sunday (getDay() === 0)
-        if (checkDate.getDay() === 0) {
-          continue;
-        }
-
-        const checkDayName = dayNames[checkDate.getDay()];
-        const slotForDay = docAvailability.find(a => a.day === checkDayName);
-
-        if (slotForDay && slotForDay.slots && slotForDay.slots.length > 0) {
-          const chosenSlot = slotForDay.slots[0];
-
-          // Push to history
-          apt.rescheduleHistory.push({
-            originalDate: apt.date,
-            originalTimeSlot: apt.timeSlot,
-            reason: 'Appointment missed - automatically rescheduled'
-          });
-
-          apt.date = checkDate;
-          apt.timeSlot = `${checkDayName} (${chosenSlot})`;
-          apt.status = 'Postponed'; // Postponed signifies rescheduled
-          await apt.save();
-          rescheduled = true;
-          break;
-        }
-      }
-
-      if (!rescheduled) {
-        apt.status = 'Cancelled';
-        apt.rescheduleHistory.push({
-          originalDate: apt.date,
-          originalTimeSlot: apt.timeSlot,
-          reason: 'Appointment missed - failed to auto-reschedule (no availability in next 6 days)'
-        });
-        await apt.save();
-      }
-    }
 
     // Find appointments where user is either patient or doctor
     const query = {
@@ -192,6 +123,84 @@ router.get('/my', protect, async (req, res) => {
       success: true,
       data: populatedApts
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @desc    Mark appointment as consulted
+// @route   POST /api/appointments/:id/consulted
+router.post('/:id/consulted', protect, async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ success: false, message: 'Appointment not found' });
+    
+    appointment.status = 'Completed';
+    await appointment.save();
+    
+    res.json({ success: true, message: 'Appointment marked as consulted', data: appointment });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @desc    Doctor requests a reschedule
+// @route   POST /api/appointments/:id/request-reschedule
+router.post('/:id/request-reschedule', protect, async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ success: false, message: 'Appointment not found' });
+    
+    appointment.doctorRequestedReschedule = true;
+    appointment.status = 'Postponed';
+    await appointment.save();
+    
+    res.json({ success: true, message: 'Reschedule request sent to patient', data: appointment });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @desc    Patient reschedules appointment
+// @route   POST /api/appointments/:id/patient-reschedule
+router.post('/:id/patient-reschedule', protect, async (req, res) => {
+  try {
+    const { newDate, newTimeSlot } = req.body;
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ success: false, message: 'Appointment not found' });
+    
+    appointment.rescheduleHistory.push({
+      originalDate: appointment.date,
+      originalTimeSlot: appointment.timeSlot,
+      reason: 'Patient accepted reschedule'
+    });
+    
+    appointment.date = new Date(newDate);
+    appointment.timeSlot = newTimeSlot;
+    appointment.doctorRequestedReschedule = false;
+    appointment.status = 'Postponed';
+    
+    await appointment.save();
+    
+    res.json({ success: true, message: 'Appointment rescheduled successfully', data: appointment });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @desc    Move patient to last in today's queue
+// @route   POST /api/appointments/:id/move-to-last
+router.post('/:id/move-to-last', protect, async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ success: false, message: 'Appointment not found' });
+    
+    // Increment queuePosition to place them at the end.
+    // A simple approach is to use Date.now() as queuePosition so it's always the highest.
+    appointment.queuePosition = Date.now();
+    await appointment.save();
+    
+    res.json({ success: true, message: 'Patient moved to the end of the queue', data: appointment });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
