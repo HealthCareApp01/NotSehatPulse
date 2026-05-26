@@ -42,6 +42,7 @@ const DashboardLayout = ({ children }) => {
   const { searchTerm } = useSelector((state) => state.products);
   const [incomingCall, setIncomingCall] = React.useState(null);
   const [callTimer, setCallTimer] = React.useState(600); // 10 minutes
+  const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
 
   // Web Audio API Ringtone
   const audioCtxRef = React.useRef(null);
@@ -133,7 +134,8 @@ const DashboardLayout = ({ children }) => {
     return () => stopRinging();
   }, [incomingCall, startRinging, stopRinging]);
 
-  const handleLogout = () => {
+  const confirmLogout = () => {
+    setShowLogoutConfirm(false);
     dispatch(logout());
     navigate('/login', { replace: true });
   };
@@ -202,6 +204,39 @@ const DashboardLayout = ({ children }) => {
         </div>
       )}
 
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="absolute inset-0 z-[100] bg-black/60 flex items-center justify-center backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white p-8 rounded-[32px] shadow-2xl max-w-sm w-full text-center relative border border-secondary">
+            <button 
+              onClick={() => setShowLogoutConfirm(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-text transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+            <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center text-rose-500 mx-auto mb-6">
+              <LogOut size={40} />
+            </div>
+            <h2 className="text-2xl font-black text-text mb-2">Confirm Logout</h2>
+            <p className="text-slate-500 font-medium mb-8">Are you sure you want to log out of your account?</p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setShowLogoutConfirm(false)} 
+                className="flex-1 bg-slate-100 text-slate-600 font-bold py-3 rounded-2xl hover:bg-slate-200 transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmLogout} 
+                className="flex-1 bg-rose-500 text-white font-bold py-3 rounded-2xl hover:bg-rose-600 transition shadow-lg shadow-rose-500/30"
+              >
+                Log Out
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside className="w-24 bg-white border-r border-secondary flex flex-col items-center py-8 gap-8">
         <button
@@ -230,7 +265,7 @@ const DashboardLayout = ({ children }) => {
         <div className="flex flex-col gap-4 flex-shrink-0">
           <SidebarItem icon={<Settings size={24} />} label="Settings" path="/settings" />
           <button
-            onClick={handleLogout}
+            onClick={() => setShowLogoutConfirm(true)}
             className="p-4 rounded-2xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
           >
             <LogOut size={24} />
