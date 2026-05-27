@@ -176,36 +176,7 @@ const PatientDashboard = () => {
 
         {/* Sidebar Mini Section */}
         <div className="space-y-10 focus:ring">
-          <div className="bg-white p-8 rounded-[40px] border border-secondary shadow-sm">
-            <h3 className="text-xl font-bold text-text mb-8">Health Overview</h3>
-            <div className="space-y-8">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-red-50 text-red-500 flex items-center justify-center">
-                    <Heart size={24} />
-                  </div>
-                  <div>
-                    <span className="block text-slate-400 text-xs font-bold uppercase tracking-wider">Heart Rate</span>
-                    <span className="text-xl font-black text-text">72 bpm</span>
-                  </div>
-                </div>
-                <div className="text-red-500 text-xs font-bold">Normal</div>
-              </div>
 
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
-                    <Activity size={24} />
-                  </div>
-                  <div>
-                    <span className="block text-slate-400 text-xs font-bold uppercase tracking-wider">Blood Sugar</span>
-                    <span className="text-xl font-black text-text">110 mg/dl</span>
-                  </div>
-                </div>
-                <div className="text-orange-500 text-xs font-bold">Safe</div>
-              </div>
-            </div>
-          </div>
 
           <div className="bg-primary/5 p-8 rounded-[40px] border border-primary/10 shadow-sm relative overflow-hidden">
              <div className="relative z-10">
