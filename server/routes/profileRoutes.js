@@ -58,7 +58,7 @@ router.get('/me', protect, async (req, res) => {
 // @access  Private
 router.put('/me', protect, async (req, res) => {
   try {
-    const { name, specialization, degree, experience, consultationFee, subscriptionFee, bio, availability, medicalHistory } = req.body;
+    const { name, specialization, degree, experience, consultationFee, subscriptionFee, bio, availability, medicalHistory, age, height, weight, disease, allergy } = req.body;
 
     const user = await User.findById(req.user.userId);
     if (!user) {
@@ -83,6 +83,9 @@ router.put('/me', protect, async (req, res) => {
       if (bio !== undefined) updateData.bio = bio;
       if (availability !== undefined) updateData.availability = availability;
 
+      // Mark profile as completed on any update
+      updateData.hasFilledProfile = true;
+
       profile = await DoctorProfile.findOneAndUpdate(
         { userId: user._id },
         { $set: updateData },
@@ -90,7 +93,15 @@ router.put('/me', protect, async (req, res) => {
       );
     } else if (user.role === 'Patient') {
       const updateData = {};
-      if (medicalHistory !== undefined) updateData.medicalHistory = medicalHistory;
+      if (age !== undefined) updateData.age = age ? age.toString().trim() : 'NA';
+      if (height !== undefined) updateData.height = height ? height.toString().trim() : 'NA';
+      if (weight !== undefined) updateData.weight = weight ? weight.toString().trim() : 'NA';
+      if (disease !== undefined) updateData.disease = disease ? disease.toString().trim() : 'NA';
+      if (allergy !== undefined) updateData.allergy = allergy ? allergy.toString().trim() : 'NA';
+      if (medicalHistory !== undefined) updateData.medicalHistory = medicalHistory ? medicalHistory.toString().trim() : 'NA';
+      
+      // Mark as completed
+      updateData.hasFilledProfile = true;
 
       profile = await PatientProfile.findOneAndUpdate(
         { userId: user._id },

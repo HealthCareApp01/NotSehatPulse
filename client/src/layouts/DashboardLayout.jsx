@@ -38,11 +38,52 @@ const DashboardLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const { user, token, isAuthenticated } = useSelector((state) => state.auth);
   const { searchTerm } = useSelector((state) => state.products);
   const [incomingCall, setIncomingCall] = React.useState(null);
   const [callTimer, setCallTimer] = React.useState(600); // 10 minutes
   const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
+  const [showIntakeForm, setShowIntakeForm] = React.useState(false);
+  const [intakeData, setIntakeData] = React.useState({
+    age: '',
+    height: '',
+    weight: '',
+    disease: '',
+    allergy: '',
+    medicalHistory: ''
+  });
+  const [savingIntake, setSavingIntake] = React.useState(false);
+  const [showDoctorIntake, setShowDoctorIntake] = React.useState(false);
+  const [doctorIntakeData, setDoctorIntakeData] = React.useState({
+    experience: '',
+    specialization: '',
+    consultationFee: ''
+  });
+
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/profile/me', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const resData = await response.json();
+        if (resData.success) {
+          const profile = resData.data.profile;
+          if (user?.role === 'Patient' && !profile?.hasFilledProfile) {
+            setShowIntakeForm(true);
+          } else if (user?.role === 'Doctor' && !profile?.hasFilledProfile) {
+            setShowDoctorIntake(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching profile for intake form:', error);
+      }
+    };
+
+    if (isAuthenticated && token && (user?.role === 'Patient' || user?.role === 'Doctor')) {
+      fetchProfile();
+    }
+  }, [isAuthenticated, token, user]);
 
   // Web Audio API Ringtone
   const audioCtxRef = React.useRef(null);
@@ -176,7 +217,7 @@ const DashboardLayout = ({ children }) => {
     <div className="flex h-screen bg-slate-50 overflow-hidden relative">
       {/* Incoming Call Modal */}
       {incomingCall && (
-        <div className="absolute inset-0 z-[100] bg-black/60 flex items-center justify-center backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center backdrop-blur-sm px-4">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white p-8 rounded-[32px] shadow-2xl max-w-sm w-full text-center border-4 border-primary">
             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto mb-6 animate-pulse">
               <PhoneCall size={40} />
@@ -206,7 +247,7 @@ const DashboardLayout = ({ children }) => {
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
-        <div className="absolute inset-0 z-[100] bg-black/60 flex items-center justify-center backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center backdrop-blur-sm px-4">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white p-8 rounded-[32px] shadow-2xl max-w-sm w-full text-center relative border border-secondary">
             <button 
               onClick={() => setShowLogoutConfirm(false)}
@@ -233,6 +274,264 @@ const DashboardLayout = ({ children }) => {
                 Log Out
               </button>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Medical Intake Modal */}
+      {showIntakeForm && (
+        <div className="fixed inset-0 z-[110] bg-black/60 flex items-center justify-center backdrop-blur-sm px-4">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white p-8 rounded-[40px] shadow-2xl max-w-lg w-full relative border border-secondary"
+          >
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto mb-4">
+                <PlusCircle size={32} />
+              </div>
+              <h2 className="text-2xl font-black text-text mb-2">Complete Your Medical Profile</h2>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                Provide your basic health details so our specialists can evaluate and guide you accurately. Omitted fields will automatically save as "NA".
+              </p>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setSavingIntake(true);
+              try {
+                const response = await fetch('http://localhost:5000/api/profile/me', {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                  },
+                  body: JSON.stringify({
+                    age: intakeData.age || 'NA',
+                    height: intakeData.height || 'NA',
+                    weight: intakeData.weight || 'NA',
+                    disease: intakeData.disease || 'NA',
+                    allergy: intakeData.allergy || 'NA',
+                    medicalHistory: intakeData.medicalHistory || 'NA'
+                  })
+                });
+                const resData = await response.json();
+                if (resData.success) {
+                  setShowIntakeForm(false);
+                }
+              } catch (err) {
+                console.error('Error saving medical intake form:', err);
+              } finally {
+                setSavingIntake(false);
+              }
+            }} className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Age</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 25"
+                    value={intakeData.age}
+                    onChange={(e) => setIntakeData({ ...intakeData, age: e.target.value })}
+                    className="w-full bg-secondary/50 border border-secondary focus:border-primary outline-none px-4 py-2.5 rounded-2xl font-bold text-xs text-text transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Height (cm)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 175"
+                    value={intakeData.height}
+                    onChange={(e) => setIntakeData({ ...intakeData, height: e.target.value })}
+                    className="w-full bg-secondary/50 border border-secondary focus:border-primary outline-none px-4 py-2.5 rounded-2xl font-bold text-xs text-text transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Weight (kg)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 70"
+                    value={intakeData.weight}
+                    onChange={(e) => setIntakeData({ ...intakeData, weight: e.target.value })}
+                    className="w-full bg-secondary/50 border border-secondary focus:border-primary outline-none px-4 py-2.5 rounded-2xl font-bold text-xs text-text transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Diseases / Illnesses</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Diabetes, Hypertension, None"
+                  value={intakeData.disease}
+                  onChange={(e) => setIntakeData({ ...intakeData, disease: e.target.value })}
+                  className="w-full bg-secondary/50 border border-secondary focus:border-primary outline-none px-4 py-2.5 rounded-2xl font-bold text-xs text-text transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Allergies</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Penicillin, Peanuts, None"
+                  value={intakeData.allergy}
+                  onChange={(e) => setIntakeData({ ...intakeData, allergy: e.target.value })}
+                  className="w-full bg-secondary/50 border border-secondary focus:border-primary outline-none px-4 py-2.5 rounded-2xl font-bold text-xs text-text transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Other Medical History</label>
+                <textarea
+                  placeholder="Describe past surgeries, conditions, or general health notes..."
+                  value={intakeData.medicalHistory}
+                  onChange={(e) => setIntakeData({ ...intakeData, medicalHistory: e.target.value })}
+                  rows={2}
+                  className="w-full bg-secondary/50 border border-secondary focus:border-primary outline-none px-4 py-2.5 rounded-2xl font-medium text-xs text-text transition-all resize-none"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setSavingIntake(true);
+                    try {
+                      const response = await fetch('http://localhost:5000/api/profile/me', {
+                        method: 'PUT',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                          age: intakeData.age || 'NA',
+                          height: intakeData.height || 'NA',
+                          weight: intakeData.weight || 'NA',
+                          disease: intakeData.disease || 'NA',
+                          allergy: intakeData.allergy || 'NA',
+                          medicalHistory: intakeData.medicalHistory || 'NA'
+                        })
+                      });
+                      const resData = await response.json();
+                      if (resData.success) {
+                        setShowIntakeForm(false);
+                      }
+                    } catch (err) {
+                      console.error('Error saving medical intake form:', err);
+                    } finally {
+                      setSavingIntake(false);
+                    }
+                  }}
+                  className="flex-1 bg-slate-100 text-slate-600 font-bold py-3.5 rounded-2xl hover:bg-slate-200 text-xs transition"
+                >
+                  Save & Skip
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingIntake}
+                  className="flex-1 bg-primary text-white font-bold py-3.5 rounded-2xl hover:bg-primary-dark text-xs transition shadow-lg shadow-primary/20 flex justify-center items-center gap-2"
+                >
+                  {savingIntake ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    'Save Medical File'
+                  )}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Doctor Intake Form */}
+      {showDoctorIntake && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-6 mx-auto">
+              <Stethoscope size={32} />
+            </div>
+            
+            <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">Complete Your Profile</h2>
+            <p className="text-center text-slate-500 text-sm mb-8">Please fill in these mandatory details to start accepting appointments.</p>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setSavingIntake(true);
+              try {
+                const response = await fetch('http://localhost:5000/api/profile/me', {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                  },
+                  body: JSON.stringify({
+                    experience: Number(doctorIntakeData.experience) || 0,
+                    specialization: doctorIntakeData.specialization || 'General Physician',
+                    consultationFee: Number(doctorIntakeData.consultationFee) || 500
+                  })
+                });
+                const resData = await response.json();
+                if (resData.success) {
+                  setShowDoctorIntake(false);
+                }
+              } catch (err) {
+                console.error('Error saving doctor profile:', err);
+              } finally {
+                setSavingIntake(false);
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Years of Experience</label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={doctorIntakeData.experience}
+                  onChange={e => setDoctorIntakeData({...doctorIntakeData, experience: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium"
+                  placeholder="e.g. 5"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Specialization</label>
+                <input
+                  type="text"
+                  required
+                  value={doctorIntakeData.specialization}
+                  onChange={e => setDoctorIntakeData({...doctorIntakeData, specialization: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium"
+                  placeholder="e.g. Cardiologist"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Consultation Fee (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={doctorIntakeData.consultationFee}
+                  onChange={e => setDoctorIntakeData({...doctorIntakeData, consultationFee: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-medium"
+                  placeholder="e.g. 500"
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="submit"
+                  disabled={savingIntake}
+                  className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-2xl hover:bg-blue-700 text-sm transition shadow-lg shadow-blue-500/30 flex justify-center items-center gap-2"
+                >
+                  {savingIntake ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    'Save Profile & Continue'
+                  )}
+                </button>
+              </div>
+            </form>
           </motion.div>
         </div>
       )}

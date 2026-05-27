@@ -523,12 +523,42 @@ const ChatAndConsult = () => {
                     </div>
                     <div>
                       <h4 className="text-2xl font-black text-text">{activeRoom.partner?.name}</h4>
-                      <span className="text-slate-500 font-bold">{activeRoom.partner?.age || 30} Yrs • O+</span>
+                      <span className="text-slate-500 font-bold">
+                        {activeRoom.partner?.age && activeRoom.partner.age !== 'NA' ? `${activeRoom.partner.age} Yrs` : 'Age NA'} • Patient
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-8 space-y-10">
+                  {/* Medical Stats (Height, Weight, Allergy, Disease) */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-secondary">
+                      <span className="block text-slate-400 text-[10px] font-black uppercase tracking-wider mb-1">Height</span>
+                      <span className="text-sm font-black text-text">
+                        {activeRoom.partner?.height && activeRoom.partner.height !== 'NA' ? `${activeRoom.partner.height} cm` : 'NA'}
+                      </span>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-secondary">
+                      <span className="block text-slate-400 text-[10px] font-black uppercase tracking-wider mb-1">Weight</span>
+                      <span className="text-sm font-black text-text">
+                        {activeRoom.partner?.weight && activeRoom.partner.weight !== 'NA' ? `${activeRoom.partner.weight} kg` : 'NA'}
+                      </span>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-secondary col-span-2">
+                      <span className="block text-slate-400 text-[10px] font-black uppercase tracking-wider mb-1">Known Diseases</span>
+                      <span className="text-sm font-bold text-text truncate block" title={activeRoom.partner?.disease || 'None'}>
+                        {activeRoom.partner?.disease || 'NA'}
+                      </span>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-secondary col-span-2">
+                      <span className="block text-slate-400 text-[10px] font-black uppercase tracking-wider mb-1">Allergies</span>
+                      <span className="text-sm font-bold text-text truncate block" title={activeRoom.partner?.allergy || 'None'}>
+                        {activeRoom.partner?.allergy || 'NA'}
+                      </span>
+                    </div>
+                  </div>
+
                   <div>
                     <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Core Medical History</h4>
                     <div className="bg-secondary/30 p-6 rounded-3xl border border-primary/10">

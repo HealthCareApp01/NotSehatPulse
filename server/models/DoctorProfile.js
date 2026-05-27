@@ -15,7 +15,8 @@ const DoctorProfileSchema = new mongoose.Schema({
       slots: [String]
     }
   ],
-  verified: { type: Boolean, default: false } // Toggle manually via DB
+  verified: { type: Boolean, default: false }, // Toggle manually via DB
+  hasFilledProfile: { type: Boolean, default: false }
 });
 
 export default mongoose.model('DoctorProfile', DoctorProfileSchema);

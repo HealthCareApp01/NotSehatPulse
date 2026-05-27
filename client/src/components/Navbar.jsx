@@ -37,7 +37,8 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className='sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-secondary'>
+    <>
+      <nav className='sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-secondary'>
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
         <div className='flex justify-between h-16 items-center'>
           <Link to="/" className='flex items-center gap-2'>
@@ -155,40 +156,42 @@ const Navbar = () => {
         )}
       </AnimatePresence>
 
-      {/* Logout Confirmation Modal */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center backdrop-blur-sm px-4">
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white p-8 rounded-[32px] shadow-2xl max-w-sm w-full text-center relative border border-secondary">
-            <button 
-              onClick={() => setShowLogoutConfirm(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-text transition-colors"
-            >
-              <X size={24} />
-            </button>
-            <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center text-rose-500 mx-auto mb-6">
-              <LogOut size={40} />
-            </div>
-            <h2 className="text-2xl font-black text-text mb-2">Confirm Logout</h2>
-            <p className="text-slate-500 font-medium mb-8">Are you sure you want to log out of your account?</p>
-            <div className="flex gap-4">
-              <button 
-                onClick={() => setShowLogoutConfirm(false)} 
-                className="flex-1 bg-slate-100 text-slate-600 font-bold py-3 rounded-2xl hover:bg-slate-200 transition"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={confirmLogout} 
-                className="flex-1 bg-rose-500 text-white font-bold py-3 rounded-2xl hover:bg-rose-600 transition shadow-lg shadow-rose-500/30"
-              >
-                Log Out
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
     </nav>
-  );
+
+    {/* Logout Confirmation Modal */}
+    {showLogoutConfirm && (
+      <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center backdrop-blur-sm px-4">
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white p-8 rounded-[32px] shadow-2xl max-w-sm w-full text-center relative border border-secondary">
+          <button 
+            onClick={() => setShowLogoutConfirm(false)}
+            className="absolute top-4 right-4 text-slate-400 hover:text-text transition-colors"
+          >
+            <X size={24} />
+          </button>
+          <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center text-rose-500 mx-auto mb-6">
+            <LogOut size={40} />
+          </div>
+          <h2 className="text-2xl font-black text-text mb-2">Confirm Logout</h2>
+          <p className="text-slate-500 font-medium mb-8">Are you sure you want to log out of your account?</p>
+          <div className="flex gap-4">
+            <button 
+              onClick={() => setShowLogoutConfirm(false)} 
+              className="flex-1 bg-slate-100 text-slate-600 font-bold py-3 rounded-2xl hover:bg-slate-200 transition"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={confirmLogout} 
+              className="flex-1 bg-rose-500 text-white font-bold py-3 rounded-2xl hover:bg-rose-600 transition shadow-lg shadow-rose-500/30"
+            >
+              Log Out
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    )}
+  </>
+);
 };
 
 export default Navbar;

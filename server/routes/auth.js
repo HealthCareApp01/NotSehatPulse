@@ -48,7 +48,8 @@ router.post('/signup', async (req, res) => {
           { day: 'Wed', slots: ['10:00 AM - 1:00 PM', '2:00 PM - 5:00 PM'] },
           { day: 'Fri', slots: ['10:00 AM - 1:00 PM', '2:00 PM - 4:00 PM'] }
         ],
-        verified: false
+        verified: false,
+        hasFilledProfile: false
       });
       await doctorProfile.save();
       // An unverified doctor acts as a patient initially

@@ -11,7 +11,8 @@ import {
   ArrowRight,
   Clock,
   Video,
-  Heart
+  Heart,
+  X
 } from 'lucide-react';
 
 const formatDate = (dateStr) => {
@@ -28,6 +29,20 @@ const PatientDashboard = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { appointments, loading } = useSelector((state) => state.appointments);
+  const [dismissedAlerts, setDismissedAlerts] = React.useState(() => {
+    try {
+      const items = localStorage.getItem('dismissedAlerts');
+      return items ? JSON.parse(items) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const dismissAlert = (id) => {
+    const updated = [...dismissedAlerts, id];
+    setDismissedAlerts(updated);
+    localStorage.setItem('dismissedAlerts', JSON.stringify(updated));
+  };
 
   useEffect(() => {
     dispatch(fetchAppointments());
@@ -78,10 +93,10 @@ const PatientDashboard = () => {
           </div>
 
           {/* Rescheduled Appointments Alerts */}
-          {appointments.filter(apt => apt.status === 'Postponed').length > 0 && (
+          {appointments.filter(apt => apt.status === 'Postponed' && !dismissedAlerts.includes(apt._id)).length > 0 && (
             <div className="space-y-4 mb-8">
-              {appointments.filter(apt => apt.status === 'Postponed').map(apt => (
-                <div key={apt._id} className="bg-gradient-to-r from-amber-500/10 to-amber-500/0 border border-amber-500/20 p-6 rounded-[28px] flex items-start gap-4 relative overflow-hidden">
+              {appointments.filter(apt => apt.status === 'Postponed' && !dismissedAlerts.includes(apt._id)).map(apt => (
+                <div key={apt._id} className="bg-gradient-to-r from-amber-500/10 to-amber-500/0 border border-amber-500/20 p-6 rounded-[28px] flex items-start gap-4 relative overflow-hidden pr-12">
                   <div className="w-1.5 h-full bg-amber-500 absolute top-0 left-0" />
                   <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-600 flex-shrink-0">
                     <Calendar size={20} className="animate-bounce" />
@@ -92,6 +107,13 @@ const PatientDashboard = () => {
                       Your consultation with <span className="font-bold text-amber-900">{apt.doctorId?.name || 'Verified Specialist'}</span> was missed. We have automatically rescheduled it for <span className="font-bold text-amber-900">{formatDate(apt.date)}</span> during the slot <span className="font-bold text-amber-900">{apt.timeSlot.split('(').pop().replace(')', '') || 'Scheduled'}</span>!
                     </p>
                   </div>
+                  <button 
+                    onClick={() => dismissAlert(apt._id)}
+                    className="absolute top-4 right-4 text-amber-600 hover:text-amber-800 hover:bg-amber-500/10 p-1.5 rounded-xl transition-colors cursor-pointer"
+                    title="Dismiss alert"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
               ))}
             </div>

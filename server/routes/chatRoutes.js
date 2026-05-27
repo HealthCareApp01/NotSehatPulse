@@ -5,6 +5,7 @@ import Subscription from '../models/Subscription.js';
 import Message from '../models/Message.js';
 import User from '../models/User.js';
 import DoctorProfile from '../models/DoctorProfile.js';
+import PatientProfile from '../models/PatientProfile.js';
 
 const router = express.Router();
 
@@ -98,14 +99,19 @@ router.get('/rooms', protect, async (req, res) => {
           const roomId = msg.roomId; // sub_chat_{patientId}
           
           if (!roomsMap.has(roomId)) {
+            const patProfile = await PatientProfile.findOne({ userId: msg.senderId._id });
             roomsMap.set(roomId, {
               partner: {
                 _id: msg.senderId._id,
                 name: msg.senderId.name,
                 email: msg.senderId.email,
                 role: msg.senderId.role,
-                age: 30, // Placeholder
-                history: 'Subscribed Patient (Smart Routed)'
+                age: patProfile?.age || 'NA',
+                height: patProfile?.height || 'NA',
+                weight: patProfile?.weight || 'NA',
+                disease: patProfile?.disease || 'NA',
+                allergy: patProfile?.allergy || 'NA',
+                history: patProfile?.medicalHistory || 'NA'
               },
               type: 'Subscription',
               roomId: roomId
@@ -126,14 +132,19 @@ router.get('/rooms', protect, async (req, res) => {
           const roomId = `chat_${patIdStr}_${userId}`;
           
           if (!roomsMap.has(roomId)) {
+            const patProfile = await PatientProfile.findOne({ userId: apt.patientId._id });
             roomsMap.set(roomId, {
               partner: {
                 _id: apt.patientId._id,
                 name: apt.patientId.name,
                 email: apt.patientId.email,
                 role: apt.patientId.role,
-                age: 30,
-                history: 'Appointment Patient'
+                age: patProfile?.age || 'NA',
+                height: patProfile?.height || 'NA',
+                weight: patProfile?.weight || 'NA',
+                disease: patProfile?.disease || 'NA',
+                allergy: patProfile?.allergy || 'NA',
+                history: patProfile?.medicalHistory || 'NA'
               },
               type: 'Appointment',
               roomId: roomId
