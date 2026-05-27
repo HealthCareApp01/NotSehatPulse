@@ -72,6 +72,7 @@ const FindDoctors = () => {
   const [paymentError, setPaymentError] = useState('');
   const [platformPaymentError, setPlatformPaymentError] = useState('');
   const [platformSubSuccess, setPlatformSubSuccess] = useState(false);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const navigate = useNavigate();
 
   const { bookingSuccess } = useSelector((state) => state.appointments);
@@ -87,6 +88,23 @@ const FindDoctors = () => {
     }
     return dates;
   }, []);
+
+  // Check active subscription on mount
+  useEffect(() => {
+    const checkSub = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/subscriptions/check/active', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.success && response.data.hasActiveSubscription) {
+          setHasActiveSubscription(true);
+        }
+      } catch (err) {
+        console.error('Error checking subscription:', err);
+      }
+    };
+    if (token) checkSub();
+  }, [token]);
 
   // When a new doctor is clicked, reset the selected slot
   useEffect(() => {
@@ -360,10 +378,14 @@ const FindDoctors = () => {
           </div>
           <button
             onClick={handlePlatformSubscribe}
-            disabled={paymentLoading || platformSubSuccess}
-            className="bg-primary hover:bg-primary-dark text-white px-8 py-3.5 rounded-2xl font-bold transition-all shadow-lg shadow-primary/20 whitespace-nowrap"
+            disabled={paymentLoading || platformSubSuccess || hasActiveSubscription}
+            className={`px-8 py-3.5 rounded-2xl font-bold transition-all shadow-lg whitespace-nowrap ${
+              (platformSubSuccess || hasActiveSubscription) 
+                ? 'bg-emerald-100 text-emerald-700 shadow-none cursor-not-allowed' 
+                : 'bg-primary hover:bg-primary-dark text-white shadow-primary/20'
+            }`}
           >
-            {platformSubSuccess ? 'Subscribed ✓' : 'Subscribe Now →'}
+            {(platformSubSuccess || hasActiveSubscription) ? 'Subscribed ✓' : 'Subscribe Now →'}
           </button>
         </div>
         {platformPaymentError && (
