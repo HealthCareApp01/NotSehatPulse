@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Menu, X, User, LogOut, LayoutDashboard } from 'lucide-react';
+import { Menu, X, User, LogOut, LayoutDashboard, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
 import { fetchCart } from '../store/slices/cartSlice';
 import { ShoppingCart } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,6 +15,7 @@ const Navbar = () => {
   const { cart } = useSelector((state) => state.cart);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { isDarkMode, toggleDarkMode } = useTheme();
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -97,6 +99,24 @@ const Navbar = () => {
                 Login / Signup
               </Link>
             )}
+
+            {/* Dark Mode Toggle */}
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={toggleDarkMode}
+              className="theme-toggle-btn ml-2 w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-primary hover:bg-secondary transition-all border border-secondary"
+              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              <motion.div
+                key={isDarkMode ? 'nav-sun' : 'nav-moon'}
+                initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </motion.div>
+            </motion.button>
           </div>
 
           <div className='md:hidden'>
@@ -126,6 +146,15 @@ const Navbar = () => {
                 {link.name}
               </Link>
             ))}
+
+            {/* Mobile Dark Mode Toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className="flex items-center gap-3 py-3 px-4 rounded-xl font-bold text-slate-500 bg-secondary/50 hover:bg-secondary transition-all"
+            >
+              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              {isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            </button>
 
             {isAuthenticated ? (
               <>

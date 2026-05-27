@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
+import { ThemeProvider } from './contexts/ThemeContext';
 import App from './App';
 import Login from './pages/Login';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -64,6 +65,7 @@ class ErrorBoundary extends React.Component {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
+      <ThemeProvider>
       <Provider store={store}>
         <Router>
           <Routes>
@@ -181,6 +183,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </Routes>
       </Router>
     </Provider>
+    </ThemeProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

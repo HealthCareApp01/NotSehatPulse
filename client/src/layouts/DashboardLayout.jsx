@@ -12,13 +12,16 @@ import {
   Pill,
   FlaskConical,
   PhoneCall,
-  Video
+  Video,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { io } from 'socket.io-client';
 import { logout } from '../store/slices/authSlice';
 import { setSearchTerm } from '../store/slices/productSlice';
+import { useTheme } from '../contexts/ThemeContext';
 
 const SidebarItem = ({ icon, label, path, active }) => (
   <Link to={path}>
@@ -40,6 +43,7 @@ const DashboardLayout = ({ children }) => {
   const dispatch = useDispatch();
   const { user, token, isAuthenticated } = useSelector((state) => state.auth);
   const { searchTerm } = useSelector((state) => state.products);
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const [incomingCall, setIncomingCall] = React.useState(null);
   const [callTimer, setCallTimer] = React.useState(600); // 10 minutes
   const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
@@ -562,6 +566,23 @@ const DashboardLayout = ({ children }) => {
         </div>
 
         <div className="flex flex-col gap-4 flex-shrink-0">
+          {/* Dark Mode Toggle */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleDarkMode}
+            className="theme-toggle-btn p-4 rounded-2xl text-slate-400 hover:text-primary hover:bg-secondary transition-all"
+            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            <motion.div
+              key={isDarkMode ? 'sun' : 'moon'}
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
+            </motion.div>
+          </motion.button>
           <SidebarItem icon={<Settings size={24} />} label="Settings" path="/settings" />
           <button
             onClick={() => setShowLogoutConfirm(true)}
@@ -589,6 +610,23 @@ const DashboardLayout = ({ children }) => {
             </div>
           )}
           <div className="flex items-center gap-6">
+            {/* Dark Mode Toggle in Header */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={toggleDarkMode}
+              className="theme-toggle-btn w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-primary hover:bg-secondary transition-all border border-transparent hover:border-secondary"
+              title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
+            >
+              <motion.div
+                key={isDarkMode ? 'sun-header' : 'moon-header'}
+                initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </motion.div>
+            </motion.button>
             <div className="text-right">
               <span className="block font-bold text-text">{user?.name || 'User'}</span>
               <span className="text-xs font-bold text-primary uppercase tracking-wider">{user?.role || 'Patient'}</span>
