@@ -37,6 +37,7 @@ const ChatAndConsult = () => {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDisclaimer, setShowDisclaimer] = useState(true);
+  const [selectedSpecialization, setSelectedSpecialization] = useState('');
 
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -153,9 +154,13 @@ const ChatAndConsult = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // 5. Send message logic
   const handleSendMessage = () => {
     if (!inputMessage.trim() || !activeRoom || !socketRef.current) return;
+
+    if (activeRoom.type === 'Subscription' && user.role === 'Patient' && !selectedSpecialization) {
+      alert("Please select a specialization before sending a message in the Subscription Chat.");
+      return;
+    }
 
     const messageData = {
       senderId: user.id,
@@ -163,7 +168,8 @@ const ChatAndConsult = () => {
       senderRole: user.role,
       receiverId: activeRoom.partner?._id,
       content: inputMessage,
-      roomId: activeRoom.roomId
+      roomId: activeRoom.roomId,
+      selectedSpecialization
     };
 
     // Emit via socket (which auto-saves to backend Message DB)
@@ -419,7 +425,26 @@ const ChatAndConsult = () => {
               </div>
 
               {/* Messaging Input Box */}
-              <div className="p-6 bg-slate-50 border-t border-secondary">
+              <div className="p-6 bg-slate-50 border-t border-secondary flex flex-col gap-3">
+                {activeRoom.type === 'Subscription' && user.role === 'Patient' && (
+                  <div className="bg-white border border-secondary px-4 py-2 rounded-xl flex items-center gap-3">
+                    <Sparkles size={16} className="text-primary" />
+                    <select
+                      value={selectedSpecialization}
+                      onChange={(e) => setSelectedSpecialization(e.target.value)}
+                      className="flex-1 bg-transparent outline-none font-bold text-sm text-slate-700 cursor-pointer"
+                    >
+                      <option value="" disabled>Select Doctor Specialization...</option>
+                      <option value="General Physician">General Physician</option>
+                      <option value="Cardiologist">Cardiologist</option>
+                      <option value="Dermatologist">Dermatologist</option>
+                      <option value="Pediatrician">Pediatrician</option>
+                      <option value="Neurologist">Neurologist</option>
+                      <option value="Orthopedic">Orthopedic</option>
+                      <option value="Psychiatrist">Psychiatrist</option>
+                    </select>
+                  </div>
+                )}
                 <div className="bg-white border-2 border-secondary focus-within:border-primary px-6 py-2 rounded-2xl flex items-center gap-4 transition-all">
                   <input 
                     placeholder="Type your message..." 

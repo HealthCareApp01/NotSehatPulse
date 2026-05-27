@@ -1,33 +1,13 @@
 import DoctorProfile from '../models/DoctorProfile.js';
 
-const SPECIALIZATION_KEYWORDS = {
-  'Cardiologist': ['heart', 'chest pain', 'blood pressure', 'bp', 'palpitation',
-                   'cardiac', 'cholesterol', 'heartbeat', 'ecg'],
-  'Dermatologist': ['skin', 'acne', 'rash', 'eczema', 'hair loss', 'pimple',
-                    'allergy', 'itching', 'fungal', 'redness', 'dandruff'],
-  'Pediatrician': ['child', 'baby', 'infant', 'kid', 'vaccination',
-                   'toddler', 'newborn', 'teething'],
-  'Neurologist': ['headache', 'migraine', 'nerve', 'brain', 'dizziness',
-                  'seizure', 'numbness', 'vertigo', 'memory', 'tremor',
-                  'vomiting', 'nausea']
-};
-
-export function detectSpecialization(messageContent) {
-  if (!messageContent) return null;
-  const lower = messageContent.toLowerCase();
-  
-  for (const [spec, keywords] of Object.entries(SPECIALIZATION_KEYWORDS)) {
-    if (keywords.some(kw => lower.includes(kw))) {
-      return spec;
-    }
-  }
-  return null;
-}
+// In-memory pointer for round-robin assignment
+const lastAssignedIndex = {};
 
 export async function assignDoctor(specialization) {
   try {
+    if (!specialization) return null;
+
     // Find all verified doctors with this specialization
-    // Note: We need to populate userId to ensure the user is still active and has role Doctor
     const doctors = await DoctorProfile.find({ 
       specialization: new RegExp(`^${specialization}$`, 'i'),
       verified: true 
@@ -39,12 +19,27 @@ export async function assignDoctor(specialization) {
       return null;
     }
 
-    // For simplicity right now, pick a random verified doctor of this spec.
-    // (Could be upgraded to check active workload later)
-    const randomIndex = Math.floor(Math.random() * validDoctors.length);
-    return validDoctors[randomIndex].userId._id;
+    // Initialize pointer if not exists
+    const specKey = specialization.toLowerCase();
+    if (lastAssignedIndex[specKey] === undefined) {
+      lastAssignedIndex[specKey] = 0;
+    }
+
+    // Assign based on current pointer
+    let currentIndex = lastAssignedIndex[specKey];
+    if (currentIndex >= validDoctors.length) {
+      currentIndex = 0; // Wrap around if doctors were removed
+    }
+
+    const assignedDoctor = validDoctors[currentIndex].userId._id;
+
+    // Increment pointer for next assignment
+    lastAssignedIndex[specKey] = (currentIndex + 1) % validDoctors.length;
+
+    return assignedDoctor;
   } catch (error) {
     console.error('Error in assignDoctor:', error);
     return null;
   }
 }
+

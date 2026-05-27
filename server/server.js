@@ -19,7 +19,7 @@ import Message from './models/Message.js';
 import cron from 'node-cron';
 import Appointment from './models/Appointment.js';
 import DoctorProfile from './models/DoctorProfile.js';
-import { detectSpecialization, assignDoctor } from './utils/keywordRouter.js';
+import { assignDoctor } from './utils/keywordRouter.js';
 
 dotenv.config();
 
@@ -119,26 +119,24 @@ io.on('connection', (socket) => {
   // Real-time Chat
   socket.on('send-message', async (data) => {
     try {
-      let { senderId, receiverId, content, roomId, senderRole } = data;
+      let { senderId, receiverId, content, roomId, senderRole, selectedSpecialization } = data;
       
-      let detectedSpecialization = null;
       let assignedDoctorId = null;
       let isSubscriptionChat = roomId.startsWith('sub_chat_');
 
       if (isSubscriptionChat && senderRole === 'Patient') {
-        // 1. Detect specialization
-        detectedSpecialization = detectSpecialization(content);
-        
-        if (detectedSpecialization) {
-          // 2. Assign doctor
-          assignedDoctorId = await assignDoctor(detectedSpecialization);
+        if (selectedSpecialization) {
+          // 1. Assign doctor based on explicit selection
+          assignedDoctorId = await assignDoctor(selectedSpecialization);
         }
 
-        // 3. Sticky routing if no new detection or no doctor found
+        // 2. Sticky routing if no new specialization provided or no doctor found
         if (!assignedDoctorId) {
           const lastMsg = await Message.findOne({ roomId, senderId, assignedDoctorId: { $ne: null } }).sort({ timestamp: -1 });
           if (lastMsg) {
             assignedDoctorId = lastMsg.assignedDoctorId;
+            // Retain the specialization from the last message for context
+            selectedSpecialization = lastMsg.detectedSpecialization; 
           }
         }
 
@@ -162,7 +160,7 @@ io.on('connection', (socket) => {
           receiverId, 
           content, 
           roomId,
-          detectedSpecialization,
+          detectedSpecialization: selectedSpecialization || null,
           assignedDoctorId: isSubscriptionChat && senderRole === 'Patient' ? assignedDoctorId : (senderRole === 'Doctor' ? senderId : null),
           isSubscriptionChat
         });
