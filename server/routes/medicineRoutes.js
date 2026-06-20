@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
       query = { $and: searchQueries };
     }
 
-    const medicines = await Medicine.find(query).limit(10);
+    const medicines = await Medicine.find(query);
     res.json({ success: true, data: medicines });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

@@ -13,6 +13,10 @@ export const StateAnnotation = Annotation.Root({
     reducer: (x, y) => y !== undefined ? y : x,
     default: () => []
   }),
+  extractedLabTests: Annotation({
+    reducer: (x, y) => y !== undefined ? y : x,
+    default: () => []
+  }),
   summary: Annotation({
     reducer: (x, y) => y !== undefined ? y : x,
     default: () => ""
@@ -24,6 +28,18 @@ export const StateAnnotation = Annotation.Root({
   retryFeedback: Annotation({
     reducer: (x, y) => y !== undefined ? y : x,
     default: () => ""
+  }),
+  lastAgent: Annotation({
+    reducer: (x, y) => y !== undefined ? y : x,
+    default: () => ""
+  }),
+  matchingDoctors: Annotation({
+    reducer: (x, y) => y !== undefined ? y : x,
+    default: () => []
+  }),
+  feedbackProcessed: Annotation({
+    reducer: (x, y) => y !== undefined ? y : x,
+    default: () => false
   }),
   onToken: Annotation({
     reducer: (x, y) => y !== undefined ? y : x,

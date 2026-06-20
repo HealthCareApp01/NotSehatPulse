@@ -21,7 +21,28 @@ const ChatbotMessageSchema = new mongoose.Schema({
     quantity: Number,
     unmatched: { type: Boolean, default: false }
   }],
+  extractedLabTests: [{
+    name: String,
+    description: String,
+    price: Number,
+    productId: { type: String, default: null },
+    brand: String,
+    category: String,
+    quantity: Number,
+    unmatched: { type: Boolean, default: false }
+  }],
   summary: String,
+  matchingDoctors: [{
+    id: String,
+    userId: String,
+    name: String,
+    specialization: String,
+    experience: Number,
+    rating: Number,
+    fee: Number,
+    degree: String,
+    bio: String
+  }],
   timestamp: { type: Date, default: Date.now }
 });
 

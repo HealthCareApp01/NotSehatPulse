@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Clock, MapPin, X, ShieldCheck, DollarSign, Calendar, Sparkles } from 'lucide-react';
@@ -20,13 +20,12 @@ const getDoctorImage = (specialization) => {
 };
 
 const DoctorAvatar = ({ doctor, className }) => {
-  const [imgError, setImgError] = useState(false);
   const nameClean = (doctor.userId?.name || '').replace('Dr. ', '');
   const initials = nameClean
     ? nameClean.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
     : 'DR';
 
-  if (imgError || !getDoctorImage(doctor.specialization)) {
+  if (!getDoctorImage(doctor.specialization)) {
     return (
       <div className={`bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-black text-primary text-2xl ${className}`}>
         {initials}
@@ -38,7 +37,6 @@ const DoctorAvatar = ({ doctor, className }) => {
     <img
       src={getDoctorImage(doctor.specialization)}
       alt={doctor.userId?.name}
-      onError={() => setImgError(true)}
       className={`block object-cover object-top ${className}`}
     />
   );
@@ -66,7 +64,7 @@ const FindDoctors = () => {
   const [loading, setLoading] = useState(false);
   const [activeSpecialty, setActiveSpecialty] = useState('All');
   const [activeDoctor, setActiveDoctor] = useState(null);
-  const [selectedSlotIndex, setSelectedSlotIndex] = useState(0);
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState(-1);
   const [error, setError] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState('');
@@ -74,6 +72,19 @@ const FindDoctors = () => {
   const [platformSubSuccess, setPlatformSubSuccess] = useState(false);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.autoSelectDoctorId && doctors.length > 0) {
+      const matched = doctors.find(doc => 
+        doc._id === location.state.autoSelectDoctorId || 
+        doc.userId?._id === location.state.autoSelectDoctorId
+      );
+      if (matched) {
+        setActiveDoctor(matched);
+      }
+    }
+  }, [doctors, location.state]);
 
   const { bookingSuccess } = useSelector((state) => state.appointments);
 
@@ -108,7 +119,7 @@ const FindDoctors = () => {
 
   // When a new doctor is clicked, reset the selected slot
   useEffect(() => {
-    setSelectedSlotIndex(0);
+    setSelectedSlotIndex(-1);
   }, [activeDoctor]);
 
   // Handle successful booking overlay close
@@ -644,7 +655,7 @@ const FindDoctors = () => {
                 {/* Booking Button */}
                 <button
                   onClick={handleBook}
-                  disabled={paymentLoading}
+                  disabled={paymentLoading || selectedSlotIndex === -1}
                   className="w-full bg-primary disabled:bg-slate-300 text-white py-4 rounded-2xl font-black text-sm hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer transform hover:-translate-y-0.5"
                 >
                   {paymentLoading ? (

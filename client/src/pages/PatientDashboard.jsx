@@ -3,10 +3,10 @@ import { motion } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchAppointments } from '../store/slices/appointmentSlice';
-import { 
-  Search, 
-  Calendar, 
-  FileText, 
+import {
+  Search,
+  Calendar,
+  FileText,
   Activity,
   ArrowRight,
   Clock,
@@ -107,7 +107,7 @@ const PatientDashboard = () => {
                       Your consultation with <span className="font-bold text-amber-900">{apt.doctorId?.name || 'Verified Specialist'}</span> was missed. We have automatically rescheduled it for <span className="font-bold text-amber-900">{formatDate(apt.date)}</span> during the slot <span className="font-bold text-amber-900">{apt.timeSlot.split('(').pop().replace(')', '') || 'Scheduled'}</span>!
                     </p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => dismissAlert(apt._id)}
                     className="absolute top-4 right-4 text-amber-600 hover:text-amber-800 hover:bg-amber-500/10 p-1.5 rounded-xl transition-colors cursor-pointer"
                     title="Dismiss alert"
@@ -179,16 +179,16 @@ const PatientDashboard = () => {
 
 
           <div className="bg-primary/5 p-8 rounded-[40px] border border-primary/10 shadow-sm relative overflow-hidden">
-             <div className="relative z-10">
-               <h3 className="text-xl font-bold text-text mb-2">Order Medicines</h3>
-               <p className="text-slate-500 text-sm mb-6">Get medicines delivered to your doorstep in 60 mins.</p>
-               <button
-                 onClick={() => navigate('/medicines')}
-                 className="w-full py-4 bg-white border-2 border-primary text-primary rounded-2xl font-bold hover:bg-primary hover:text-white transition-all"
-               >
-                 Order Now
-               </button>
-             </div>
+            <div className="relative z-10">
+              <h3 className="text-xl font-bold text-text mb-2">Order Medicines</h3>
+              <p className="text-slate-500 text-sm mb-6">Get medicines delivered to your doorstep in 60 mins.</p>
+              <button
+                onClick={() => navigate('/pharmacy')}
+                className="w-full py-4 bg-white border-2 border-primary text-primary rounded-2xl font-bold hover:bg-primary hover:text-white transition-all"
+              >
+                Order Now
+              </button>
+            </div>
           </div>
         </div>
       </div>

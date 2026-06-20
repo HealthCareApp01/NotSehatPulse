@@ -85,9 +85,13 @@ router.post('/message', protect, async (req, res) => {
       messages: messages,
       fileData: file || null,
       extractedMedicines: [],
+      extractedLabTests: [],
       summary: "",
       isHealthTopic: true,
       retryFeedback: feedback || "",
+      lastAgent: "",
+      matchingDoctors: [],
+      feedbackProcessed: false,
       onToken: onToken // Pass the callback to the graph state
     };
 
@@ -107,7 +111,9 @@ router.post('/message', protect, async (req, res) => {
         role: 'assistant',
         content: botReplyText.trim(),
         extractedMedicines: finalState.extractedMedicines || [],
-        summary: finalState.summary || ""
+        extractedLabTests: finalState.extractedLabTests || [],
+        summary: finalState.summary || "",
+        matchingDoctors: finalState.matchingDoctors || []
       });
     }
 
@@ -115,7 +121,9 @@ router.post('/message', protect, async (req, res) => {
     res.write(`data: ${JSON.stringify({ 
       text: "", 
       extractedMedicines: finalState.extractedMedicines || [],
+      extractedLabTests: finalState.extractedLabTests || [],
       summary: finalState.summary || "",
+      matchingDoctors: finalState.matchingDoctors || [],
       isHealthTopic: finalState.isHealthTopic,
       isFinal: true
     })}\n\n`);

@@ -13,6 +13,7 @@ import {
   FileText,
   Check,
   Loader2,
+  Sparkles,
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -67,7 +68,9 @@ const AISymptomChecker = () => {
             content: msg.content,
             file: msg.file,
             extractedMedicines: msg.extractedMedicines,
-            summary: msg.summary
+            extractedLabTests: msg.extractedLabTests,
+            summary: msg.summary,
+            matchingDoctors: msg.matchingDoctors
           }));
           setMessages([
             {
@@ -255,6 +258,7 @@ const AISymptomChecker = () => {
         role: 'bot',
         content: '',
         extractedMedicines: [],
+        extractedLabTests: [],
         summary: ''
       };
       setMessages(prev => [...prev, botPlaceholder]);
@@ -291,8 +295,14 @@ const AISymptomChecker = () => {
                   if (parsed.extractedMedicines && parsed.extractedMedicines.length > 0) {
                     lastMsg.extractedMedicines = parsed.extractedMedicines;
                   }
+                  if (parsed.extractedLabTests && parsed.extractedLabTests.length > 0) {
+                    lastMsg.extractedLabTests = parsed.extractedLabTests;
+                  }
                   if (parsed.summary) {
                     lastMsg.summary = parsed.summary;
+                  }
+                  if (parsed.matchingDoctors && parsed.matchingDoctors.length > 0) {
+                    lastMsg.matchingDoctors = parsed.matchingDoctors;
                   }
                 }
                 return updated;
@@ -369,14 +379,53 @@ const AISymptomChecker = () => {
     }
   };
 
+  // Add Extracted Lab Tests to Cart
+  const handleAddToCartLabTests = async (labTestsList) => {
+    if (!labTestsList || labTestsList.length === 0) return;
+
+    const availableTests = labTestsList.filter(test => !test.unmatched);
+    const hasUnavailable = labTestsList.some(test => test.unmatched);
+
+    if (availableTests.length === 0) {
+      alert("None of the extracted lab tests are currently available.");
+      return;
+    }
+
+    setAddingToCartState(true);
+
+    try {
+      const promises = availableTests.map(test => 
+        dispatch(addToCart({
+          productId: test.productId,
+          quantity: test.quantity,
+          itemModel: 'LabTest'
+        })).unwrap()
+      );
+
+      await Promise.all(promises);
+      
+      if (hasUnavailable) {
+        alert("Adding available lab tests to your cart. Unavailable items were skipped.");
+      }
+
+      navigate('/cart');
+    } catch (error) {
+      console.error("❌ Error adding lab tests to cart:", error);
+      alert("Failed to add some lab tests to cart.");
+    } finally {
+      setAddingToCartState(false);
+    }
+  };
+
   // Action 2: Cancel (Clear only the result of the prescription parsing)
   const handleCancelMedicines = () => {
     setMessages(prev => {
       const updated = [...prev];
       // Find the last bot message that has extracted medicines and clear it
       for (let i = updated.length - 1; i >= 0; i--) {
-        if (updated[i].role === 'bot' && updated[i].extractedMedicines && updated[i].extractedMedicines.length > 0) {
+        if (updated[i].role === 'bot' && ((updated[i].extractedMedicines && updated[i].extractedMedicines.length > 0) || (updated[i].extractedLabTests && updated[i].extractedLabTests.length > 0))) {
           updated[i].extractedMedicines = [];
+          updated[i].extractedLabTests = [];
           updated[i].content = "Prescription extraction cancelled.";
           break;
         }
@@ -444,6 +493,7 @@ const AISymptomChecker = () => {
         role: 'bot',
         content: '',
         extractedMedicines: [],
+        extractedLabTests: [],
         summary: ''
       };
       setMessages(prev => [...prev, botPlaceholder]);
@@ -480,8 +530,14 @@ const AISymptomChecker = () => {
                   if (parsed.extractedMedicines && parsed.extractedMedicines.length > 0) {
                     lastMsg.extractedMedicines = parsed.extractedMedicines;
                   }
+                  if (parsed.extractedLabTests && parsed.extractedLabTests.length > 0) {
+                    lastMsg.extractedLabTests = parsed.extractedLabTests;
+                  }
                   if (parsed.summary) {
                     lastMsg.summary = parsed.summary;
+                  }
+                  if (parsed.matchingDoctors && parsed.matchingDoctors.length > 0) {
+                    lastMsg.matchingDoctors = parsed.matchingDoctors;
                   }
                 }
                 return updated;
@@ -728,6 +784,166 @@ const AISymptomChecker = () => {
                             )}
                             Add to Cart
                           </button>
+                        </div>
+                      </motion.div>
+                    )}
+
+                  {/* Structured Lab Tests Card */}
+                  {msg.extractedLabTests &&
+                    msg.extractedLabTests.length > 0 && (
+                      <motion.div
+                        initial={{ scale: 0.95, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className='bg-white border-2 border-indigo-100 rounded-3xl p-5 shadow-lg space-y-4 mt-4'
+                      >
+                        <div className='flex items-center gap-2 text-indigo-700 font-bold border-b border-indigo-100 pb-3'>
+                          <FileText
+                            className='text-indigo-500 animate-pulse'
+                            size={20}
+                          />
+                          <h4 className='text-sm tracking-wide uppercase'>
+                            🧪 Recommended Lab Tests
+                          </h4>
+                        </div>
+
+                        <div className='divide-y divide-slate-100'>
+                          {msg.extractedLabTests.map((test, mIdx) => (
+                            <div
+                              key={mIdx}
+                              className='py-3 flex justify-between items-center text-sm gap-2'
+                            >
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className='font-bold text-text'>
+                                    {test.name}
+                                  </p>
+                                  {test.unmatched ? (
+                                    <span className="px-1.5 py-0.5 bg-rose-50 text-rose-500 border border-rose-100 rounded-full font-bold text-[8px] uppercase tracking-wide">
+                                      Unavailable
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-500 border border-indigo-100 rounded-full font-bold text-[8px] uppercase tracking-wide">
+                                      Available
+                                    </span>
+                                  )}
+                                </div>
+                                <p className='text-[11px] text-slate-400 font-semibold'>
+                                  {test.unmatched ? "Not available in local lab" : `${test.category} • ${test.brand || 'Local Lab'}`}
+                                </p>
+                              </div>
+                              <div className='text-right shrink-0'>
+                                <span className='font-black text-text'>
+                                  {test.unmatched ? "—" : `₹${test.price}`}
+                                </span>
+                                <p className={`text-[10px] font-bold mt-0.5 ${test.unmatched ? 'text-rose-500' : 'text-indigo-600'}`}>
+                                  {test.unmatched ? "Cannot Book" : "Can Book"}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Summary Row */}
+                        <div className='pt-3 border-t border-slate-100 flex justify-between items-center'>
+                          <span className='text-xs text-slate-400 font-bold uppercase'>
+                            Estimated Total
+                          </span>
+                          <span className='text-lg font-black text-indigo-600'>
+                            ₹
+                            {msg.extractedLabTests.reduce(
+                              (acc, test) => acc + (test.price || 0),
+                              0,
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className='grid grid-cols-2 gap-2.5 pt-2'>
+                          <button
+                            onClick={handleCancelMedicines}
+                            className='flex items-center justify-center gap-1.5 py-2.5 px-2 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-100 border border-rose-100 font-bold text-xs transition-all cursor-pointer'
+                          >
+                            <Trash2 size={14} />
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleAddToCartLabTests(msg.extractedLabTests)}
+                            disabled={addingToCartState}
+                            className='flex items-center justify-center gap-1.5 py-2.5 px-2 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-2xl hover:from-indigo-600 hover:to-blue-700 shadow-md shadow-indigo-500/10 font-bold text-xs transition-all cursor-pointer disabled:opacity-50'
+                          >
+                            {addingToCartState ? (
+                              <Loader2 size={14} className='animate-spin' />
+                            ) : (
+                              <ShoppingCart size={14} />
+                            )}
+                            Add to Cart
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+
+                  {/* Structured Doctor Recommendation Card */}
+                  {msg.matchingDoctors &&
+                    msg.matchingDoctors.length > 0 && (
+                      <motion.div
+                        initial={{ scale: 0.95, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className='bg-white border-2 border-primary/20 rounded-3xl p-5 shadow-lg space-y-4'
+                      >
+                        <div className='flex items-center gap-2 text-primary font-bold border-b border-secondary pb-3'>
+                          <Sparkles
+                            className='text-primary animate-pulse'
+                            size={20}
+                          />
+                          <h4 className='text-sm tracking-wide uppercase'>
+                            🩺 Recommended Specialists
+                          </h4>
+                        </div>
+
+                        <div className='divide-y divide-slate-100'>
+                          {msg.matchingDoctors.map((doc, dIdx) => (
+                            <div
+                              key={dIdx}
+                              className='py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm gap-4'
+                            >
+                              <div className='flex gap-3 items-center'>
+                                <div className='w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-primary text-base shrink-0'>
+                                  {doc.name ? doc.name.replace('Dr. ', '').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'DR'}
+                                </div>
+                                <div>
+                                  <p className='font-bold text-text'>
+                                    {doc.name}
+                                  </p>
+                                  <p className='text-xs text-primary font-bold uppercase tracking-wider mt-0.5'>
+                                    {doc.specialization} • {doc.experience} Yrs Exp
+                                  </p>
+                                  <p className='text-[10px] text-slate-400 font-semibold mt-0.5'>
+                                    {doc.degree || 'MBBS'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className='flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end shrink-0'>
+                                <div className='text-left sm:text-right'>
+                                  <span className='font-black text-text'>
+                                    ₹{doc.fee}
+                                  </span>
+                                  <p className='text-[10px] text-slate-400 font-bold mt-0.5'>
+                                    ⭐ {doc.rating || '4.8'} Rating
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() =>
+                                    navigate('/find-doctors', {
+                                      state: { autoSelectDoctorId: doc.id }
+                                    })
+                                  }
+                                  className='flex items-center justify-center gap-1.5 py-2.5 px-4 bg-primary text-white rounded-2xl hover:bg-primary-dark font-bold text-xs transition-all cursor-pointer shadow-md shadow-primary/10'
+                                >
+                                  Book Appointment
+                                </button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </motion.div>
                     )}
