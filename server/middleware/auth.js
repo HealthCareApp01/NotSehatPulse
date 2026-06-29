@@ -10,9 +10,12 @@ export const protect = async (req, res, next) => {
       req.user = decoded;
       next();
     } catch (error) {
-      console.error(error);
-      res.status(401).json({ success: false, message: 'Not authorized, token failed' });
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ success: false, message: 'Token expired. Please log in again.', code: 'TOKEN_EXPIRED' });
+      }
+      return res.status(401).json({ success: false, message: 'Not authorized, token failed' });
     }
+    return;
   }
 
   if (!token) {

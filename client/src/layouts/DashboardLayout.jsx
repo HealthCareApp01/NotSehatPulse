@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Calendar,
   MessageSquare,
-  Settings,
   LogOut,
   Search,
   PlusCircle,
@@ -583,7 +582,6 @@ const DashboardLayout = ({ children }) => {
               {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
             </motion.div>
           </motion.button>
-          <SidebarItem icon={<Settings size={24} />} label="Settings" path="/settings" />
           <button
             onClick={() => setShowLogoutConfirm(true)}
             className="p-4 rounded-2xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"

@@ -12,10 +12,31 @@ const safeParse = (key) => {
   }
 };
 
+// Check if a JWT token is expired without verifying signature
+const isTokenExpired = (token) => {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // exp is in seconds, Date.now() is in milliseconds
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+};
+
+const storedToken = localStorage.getItem('token');
+const tokenExpired = isTokenExpired(storedToken);
+
+// If token is already expired on load, clear localStorage immediately
+if (tokenExpired && storedToken) {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+}
+
 const initialState = {
-  user: safeParse('user'),
-  token: localStorage.getItem('token') || null,
-  isAuthenticated: !!localStorage.getItem('token'),
+  user: tokenExpired ? null : safeParse('user'),
+  token: tokenExpired ? null : storedToken,
+  isAuthenticated: !tokenExpired && !!storedToken,
   loading: false,
   error: null,
 };
@@ -51,8 +72,16 @@ const authSlice = createSlice({
       localStorage.removeItem('user');
       localStorage.removeItem('token');
     },
+    handleTokenExpired: (state) => {
+      state.user = null;
+      state.token = null;
+      state.isAuthenticated = false;
+      state.error = 'Session expired. Please log in again.';
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+    },
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout } = authSlice.actions;
+export const { loginStart, loginSuccess, loginFailure, logout, handleTokenExpired } = authSlice.actions;
 export default authSlice.reducer;

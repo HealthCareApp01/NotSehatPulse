@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { handleTokenExpired } from './authSlice';
 
 const API_URL = 'http://localhost:5000/api/cart';
 
@@ -13,57 +14,72 @@ const getAuthConfig = (getState) => {
   };
 };
 
-export const fetchCart = createAsyncThunk('cart/fetchCart', async (_, { getState, rejectWithValue }) => {
+// Helper: checks if error is a token expiry and dispatches logout
+const handleAuthError = (error, dispatch) => {
+  const status = error?.response?.status;
+  const code = error?.response?.data?.code;
+  if (status === 401 && code === 'TOKEN_EXPIRED') {
+    dispatch(handleTokenExpired());
+  }
+};
+
+export const fetchCart = createAsyncThunk('cart/fetchCart', async (_, { getState, dispatch, rejectWithValue }) => {
   try {
     const response = await axios.get(API_URL, getAuthConfig(getState));
     return response.data.data;
   } catch (error) {
-    return rejectWithValue(error.response.data.message || 'Failed to fetch cart');
+    handleAuthError(error, dispatch);
+    return rejectWithValue(error.response?.data?.message || 'Failed to fetch cart');
   }
 });
 
-export const addToCart = createAsyncThunk('cart/addToCart', async ({ productId, quantity, itemModel }, { getState, rejectWithValue }) => {
+export const addToCart = createAsyncThunk('cart/addToCart', async ({ productId, quantity, itemModel }, { getState, dispatch, rejectWithValue }) => {
   try {
     const response = await axios.post(`${API_URL}/add`, { productId, quantity, itemModel }, getAuthConfig(getState));
     return response.data.data;
   } catch (error) {
-    return rejectWithValue(error.response.data.message || 'Failed to add to cart');
+    handleAuthError(error, dispatch);
+    return rejectWithValue(error.response?.data?.message || 'Failed to add to cart');
   }
 });
 
-export const placeOrder = createAsyncThunk('cart/placeOrder', async (orderData, { getState, rejectWithValue }) => {
+export const placeOrder = createAsyncThunk('cart/placeOrder', async (orderData, { getState, dispatch, rejectWithValue }) => {
   try {
     const response = await axios.post('http://localhost:5000/api/orders', orderData, getAuthConfig(getState));
     return response.data.data;
   } catch (error) {
-    return rejectWithValue(error.response.data.message || 'Failed to place order');
+    handleAuthError(error, dispatch);
+    return rejectWithValue(error.response?.data?.message || 'Failed to place order');
   }
 });
 
-export const updateCartQuantity = createAsyncThunk('cart/updateCartQuantity', async ({ productId, quantity }, { getState, rejectWithValue }) => {
+export const updateCartQuantity = createAsyncThunk('cart/updateCartQuantity', async ({ productId, quantity }, { getState, dispatch, rejectWithValue }) => {
   try {
     const response = await axios.put(`${API_URL}/update`, { productId, quantity }, getAuthConfig(getState));
     return response.data.data;
   } catch (error) {
-    return rejectWithValue(error.response.data.message || 'Failed to update quantity');
+    handleAuthError(error, dispatch);
+    return rejectWithValue(error.response?.data?.message || 'Failed to update quantity');
   }
 });
 
-export const removeFromCart = createAsyncThunk('cart/removeFromCart', async (productId, { getState, rejectWithValue }) => {
+export const removeFromCart = createAsyncThunk('cart/removeFromCart', async (productId, { getState, dispatch, rejectWithValue }) => {
   try {
     const response = await axios.delete(`${API_URL}/remove/${productId}`, getAuthConfig(getState));
     return response.data.data;
   } catch (error) {
-    return rejectWithValue(error.response.data.message || 'Failed to remove item');
+    handleAuthError(error, dispatch);
+    return rejectWithValue(error.response?.data?.message || 'Failed to remove item');
   }
 });
 
-export const clearCart = createAsyncThunk('cart/clearCart', async (_, { getState, rejectWithValue }) => {
+export const clearCart = createAsyncThunk('cart/clearCart', async (_, { getState, dispatch, rejectWithValue }) => {
   try {
     const response = await axios.delete(`${API_URL}/clear`, getAuthConfig(getState));
     return response.data.data;
   } catch (error) {
-    return rejectWithValue(error.response.data.message || 'Failed to clear cart');
+    handleAuthError(error, dispatch);
+    return rejectWithValue(error.response?.data?.message || 'Failed to clear cart');
   }
 });
 
@@ -88,6 +104,7 @@ const cartSlice = createSlice({
     builder
       .addCase(fetchCart.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchCart.fulfilled, (state, action) => {
         state.loading = false;
@@ -97,8 +114,14 @@ const cartSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      .addCase(addToCart.pending, (state) => {
+        state.error = null;
+      })
       .addCase(addToCart.fulfilled, (state, action) => {
         state.cart = action.payload;
+      })
+      .addCase(addToCart.rejected, (state, action) => {
+        state.error = action.payload;
       })
       .addCase(updateCartQuantity.fulfilled, (state, action) => {
         state.cart = action.payload;
