@@ -131,8 +131,8 @@ router.put('/me', protect, async (req, res) => {
 
 // @desc    Get all doctor profiles with user details (supports search & filters)
 // @route   GET /api/profile/doctors
-// @access  Private
-router.get('/doctors', protect, async (req, res) => {
+// @access  Public
+router.get('/doctors', async (req, res) => {
   try {
     const { search } = req.query;
 

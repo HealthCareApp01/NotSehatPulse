@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Clock, MapPin, X, ShieldCheck, DollarSign, Calendar, Sparkles } from 'lucide-react';
 import { setSearchTerm } from '../store/slices/productSlice';
 import { bookAppointment, resetBookingSuccess } from '../store/slices/appointmentSlice';
+import AuthModal from '../components/AuthModal';
 import { io } from 'socket.io-client';
 
 const specialties = ['All', 'Cardiologist', 'Dermatologist', 'Pediatrician', 'Neurologist'];
@@ -58,7 +59,7 @@ const loadRazorpayScript = () => {
 
 const FindDoctors = () => {
   const dispatch = useDispatch();
-  const { token } = useSelector((state) => state.auth);
+  const { token, isAuthenticated } = useSelector((state) => state.auth);
   const { searchTerm } = useSelector((state) => state.products);
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -71,6 +72,8 @@ const FindDoctors = () => {
   const [platformPaymentError, setPlatformPaymentError] = useState('');
   const [platformSubSuccess, setPlatformSubSuccess] = useState(false);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -173,6 +176,12 @@ const FindDoctors = () => {
   const handleBook = async () => {
     if (!activeDoctor) return;
     
+    if (!isAuthenticated) {
+      setPendingAction(() => () => handleBook());
+      setShowAuthModal(true);
+      return;
+    }
+    
     setPaymentError('');
     setPaymentLoading(true);
     
@@ -273,6 +282,12 @@ const FindDoctors = () => {
 
 
   const handlePlatformSubscribe = async () => {
+    if (!isAuthenticated) {
+      setPendingAction(() => () => handlePlatformSubscribe());
+      setShowAuthModal(true);
+      return;
+    }
+
     setPlatformPaymentError('');
     setPaymentLoading(true);
     
@@ -365,6 +380,14 @@ const FindDoctors = () => {
 
   return (
     <div className="space-y-10 max-w-7xl mx-auto px-4">
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          if (pendingAction) pendingAction();
+          setPendingAction(null);
+        }}
+      />
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>

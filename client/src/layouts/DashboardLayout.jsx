@@ -72,10 +72,31 @@ const DashboardLayout = ({ children }) => {
         const resData = await response.json();
         if (resData.success) {
           const profile = resData.data.profile;
-          if (user?.role === 'Patient' && !profile?.hasFilledProfile) {
-            setShowIntakeForm(true);
-          } else if (user?.role === 'Doctor' && !profile?.hasFilledProfile) {
-            setShowDoctorIntake(true);
+          if (user?.role === 'Patient') {
+            if (profile) {
+              setIntakeData({
+                age: profile.age !== 'NA' ? profile.age : '',
+                height: profile.height !== 'NA' ? profile.height : '',
+                weight: profile.weight !== 'NA' ? profile.weight : '',
+                disease: profile.disease !== 'NA' ? profile.disease : '',
+                allergy: profile.allergy !== 'NA' ? profile.allergy : '',
+                medicalHistory: profile.medicalHistory !== 'NA' ? profile.medicalHistory : ''
+              });
+            }
+            if (!profile?.hasFilledProfile) {
+              setShowIntakeForm(true);
+            }
+          } else if (user?.role === 'Doctor') {
+            if (profile) {
+              setDoctorIntakeData({
+                experience: profile.experience || '',
+                specialization: profile.specialization || '',
+                consultationFee: profile.consultationFee || ''
+              });
+            }
+            if (!profile?.hasFilledProfile) {
+              setShowDoctorIntake(true);
+            }
           }
         }
       } catch (error) {
@@ -185,6 +206,7 @@ const DashboardLayout = ({ children }) => {
   };
 
   const getDashboardPath = () => {
+    if (!isAuthenticated || !user) return '/';
     if (user?.role === 'Admin') return '/admin-dashboard';
     return user?.role === 'Doctor' ? '/doctor-dashboard' : '/patient-dashboard';
   };
@@ -203,7 +225,7 @@ const DashboardLayout = ({ children }) => {
     dispatch(setSearchTerm(e.target.value));
   };
 
-  const sidebarItems = [
+  const sidebarItems = isAuthenticated && user ? [
     { icon: <LayoutDashboard size={24} />, label: 'Dashboard', path: getDashboardPath() },
     ...(user?.role !== 'Admin' ? [
       { icon: <Stethoscope size={24} />, label: 'Doctors', path: '/find-doctors' },
@@ -213,6 +235,10 @@ const DashboardLayout = ({ children }) => {
       { icon: <MessageSquare size={24} />, label: 'Chat', path: '/chat' },
       { icon: <PlusCircle size={24} />, label: 'AI Checker', path: '/ai-symptom-checker' },
     ] : [])
+  ] : [
+    { icon: <Stethoscope size={24} />, label: 'Doctors', path: '/find-doctors' },
+    { icon: <Pill size={24} />, label: 'Pharmacy', path: '/pharmacy' },
+    { icon: <FlaskConical size={24} />, label: 'Lab Tests', path: '/labs' },
   ];
 
 
@@ -289,6 +315,12 @@ const DashboardLayout = ({ children }) => {
             animate={{ scale: 1, opacity: 1 }}
             className="bg-white p-8 rounded-[40px] shadow-2xl max-w-lg w-full relative border border-secondary"
           >
+            <button 
+              onClick={() => setShowIntakeForm(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-text transition-colors bg-slate-100 hover:bg-slate-200 p-2 rounded-full cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto mb-4">
                 <PlusCircle size={32} />
@@ -394,50 +426,16 @@ const DashboardLayout = ({ children }) => {
                 />
               </div>
 
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setSavingIntake(true);
-                    try {
-                      const response = await fetch('http://localhost:5000/api/profile/me', {
-                        method: 'PUT',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          Authorization: `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                          age: intakeData.age || 'NA',
-                          height: intakeData.height || 'NA',
-                          weight: intakeData.weight || 'NA',
-                          disease: intakeData.disease || 'NA',
-                          allergy: intakeData.allergy || 'NA',
-                          medicalHistory: intakeData.medicalHistory || 'NA'
-                        })
-                      });
-                      const resData = await response.json();
-                      if (resData.success) {
-                        setShowIntakeForm(false);
-                      }
-                    } catch (err) {
-                      console.error('Error saving medical intake form:', err);
-                    } finally {
-                      setSavingIntake(false);
-                    }
-                  }}
-                  className="flex-1 bg-slate-100 text-slate-600 font-bold py-3.5 rounded-2xl hover:bg-slate-200 text-xs transition"
-                >
-                  Save & Skip
-                </button>
+              <div className="flex pt-4">
                 <button
                   type="submit"
                   disabled={savingIntake}
-                  className="flex-1 bg-primary text-white font-bold py-3.5 rounded-2xl hover:bg-primary-dark text-xs transition shadow-lg shadow-primary/20 flex justify-center items-center gap-2"
+                  className="w-full bg-primary text-white font-bold py-3.5 rounded-2xl hover:bg-primary-dark text-xs transition shadow-lg shadow-primary/20 flex justify-center items-center gap-2 cursor-pointer"
                 >
                   {savingIntake ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    'Save Medical File'
+                    'Save'
                   )}
                 </button>
               </div>
@@ -448,8 +446,14 @@ const DashboardLayout = ({ children }) => {
 
       {/* Doctor Intake Form */}
       {showDoctorIntake && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[110] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative max-h-[90vh] overflow-y-auto border border-secondary">
+            <button 
+              onClick={() => setShowDoctorIntake(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-text transition-colors bg-slate-100 hover:bg-slate-200 p-2 rounded-full cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
             <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-6 mx-auto">
               <Stethoscope size={32} />
             </div>
@@ -582,12 +586,14 @@ const DashboardLayout = ({ children }) => {
               {isDarkMode ? <Sun size={24} /> : <Moon size={24} />}
             </motion.div>
           </motion.button>
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="p-4 rounded-2xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
-          >
-            <LogOut size={24} />
-          </button>
+          {isAuthenticated && (
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="p-4 rounded-2xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+            >
+              <LogOut size={24} />
+            </button>
+          )}
         </div>
       </aside>
 
@@ -625,13 +631,31 @@ const DashboardLayout = ({ children }) => {
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
               </motion.div>
             </motion.button>
-            <div className="text-right">
-              <span className="block font-bold text-text">{user?.name || 'User'}</span>
-              <span className="text-xs font-bold text-primary uppercase tracking-wider">{user?.role || 'Patient'}</span>
-            </div>
-            <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-primary flex items-center justify-center bg-secondary">
-              <span className="text-primary font-bold">{user?.name?.charAt(0) || 'U'}</span>
-            </div>
+            {isAuthenticated ? (
+              <>
+                <div className="text-right">
+                  <span className="block font-bold text-text">{user?.name || 'User'}</span>
+                  <span className="text-xs font-bold text-primary uppercase tracking-wider">{user?.role || 'Patient'}</span>
+                </div>
+                <button 
+                  onClick={() => {
+                    if (user?.role === 'Doctor') setShowDoctorIntake(true);
+                    else if (user?.role === 'Patient') setShowIntakeForm(true);
+                  }}
+                  className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-primary flex items-center justify-center bg-secondary cursor-pointer hover:shadow-lg hover:shadow-primary/20 transition-all group"
+                  title="Edit Medical Profile"
+                >
+                  <span className="text-primary font-bold group-hover:scale-110 transition-transform">{user?.name?.charAt(0) || 'U'}</span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => navigate('/login')}
+                className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all cursor-pointer"
+              >
+                Login / Sign up
+              </button>
+            )}
           </div>
         </header>
 

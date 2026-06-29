@@ -15,6 +15,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchMedicines, setSearchTerm } from '../store/slices/productSlice';
 import { fetchCart, addToCart, updateCartQuantity, removeFromCart, placeOrder, resetOrderSuccess } from '../store/slices/cartSlice';
+import AuthModal from '../components/AuthModal';
 import axios from 'axios';
 
 const loadRazorpayScript = () => {
@@ -35,15 +36,19 @@ const PharmacyAndLabs = () => {
   const dispatch = useDispatch();
   const { medicines, loading: productsLoading, searchTerm } = useSelector((state) => state.products);
   const { cart, loading: cartLoading, orderSuccess } = useSelector((state) => state.cart);
-  const { token, user } = useSelector((state) => state.auth);
+  const { token, user, isAuthenticated } = useSelector((state) => state.auth);
 
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   useEffect(() => {
     dispatch(fetchMedicines(searchTerm));
-    dispatch(fetchCart());
-  }, [dispatch, searchTerm]);
+    if (isAuthenticated) {
+      dispatch(fetchCart());
+    }
+  }, [dispatch, searchTerm, isAuthenticated]);
 
   // Clear search on unmount
   useEffect(() => {
@@ -60,6 +65,11 @@ const PharmacyAndLabs = () => {
   }, [orderSuccess, dispatch]);
 
   const handleAddToCart = (product) => {
+    if (!isAuthenticated) {
+      setPendingAction(() => () => dispatch(addToCart({ productId: product._id, quantity: 1, itemModel: 'Medicine' })));
+      setShowAuthModal(true);
+      return;
+    }
     dispatch(addToCart({ productId: product._id, quantity: 1, itemModel: 'Medicine' }));
   };
 
@@ -171,6 +181,14 @@ const PharmacyAndLabs = () => {
 
   return (
     <div className="space-y-10">
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          if (pendingAction) pendingAction();
+          setPendingAction(null);
+        }}
+      />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-4xl font-black text-text">Pharmacy</h1>

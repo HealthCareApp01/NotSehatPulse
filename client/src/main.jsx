@@ -120,11 +120,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route
             path="/pharmacy"
             element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <PharmacyAndLabs />
-                </DashboardLayout>
-              </ProtectedRoute>
+              <DashboardLayout>
+                <PharmacyAndLabs />
+              </DashboardLayout>
             }
           />
 
@@ -142,11 +140,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route
             path="/find-doctors"
             element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <FindDoctors />
-                </DashboardLayout>
-              </ProtectedRoute>
+              <DashboardLayout>
+                <FindDoctors />
+              </DashboardLayout>
             }
           />
 
@@ -154,11 +150,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route
             path="/labs"
             element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <Labs />
-                </DashboardLayout>
-              </ProtectedRoute>
+              <DashboardLayout>
+                <Labs />
+              </DashboardLayout>
             } />
 
           <Route
