@@ -32,7 +32,6 @@ const ChatAndConsult = () => {
   const [chatRooms, setChatRooms] = useState([]);
   const [activeRoom, setActiveRoom] = useState(null);
   const [showProfile, setShowProfile] = useState(true);
-  const [inCall, setInCall] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [loadingRooms, setLoadingRooms] = useState(true);
@@ -308,27 +307,6 @@ const ChatAndConsult = () => {
       {/* Main Container: Selected Chat Room or Placeholder */}
       <div className="flex-1 flex flex-col bg-white border border-secondary rounded-[40px] overflow-hidden">
         {activeRoom ? (
-          inCall ? (
-            <div className="flex-1 bg-text relative">
-              {/* Main Video (Remote) */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <User size={120} className="text-white/10" />
-                <span className="absolute bottom-10 text-white font-bold bg-black/40 px-6 py-2 rounded-full">Remote Participant</span>
-              </div>
-              
-              {/* PiP (Local) */}
-              <div className="absolute top-6 right-6 w-48 h-32 bg-slate-800 rounded-2xl border-2 border-white/20 shadow-2xl overflow-hidden">
-                 <div className="w-full h-full flex items-center justify-center text-white/20 uppercase text-[10px] font-bold">You</div>
-              </div>
-
-              {/* Controls */}
-              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-4">
-                 <button className="w-14 h-14 rounded-2xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-md transition-all"><Mic size={24} /></button>
-                 <button className="w-14 h-14 rounded-2xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-md transition-all"><Video size={24} /></button>
-                 <button onClick={() => setInCall(false)} className="w-14 h-14 rounded-2xl bg-red-500 text-white flex items-center justify-center shadow-xl shadow-red-500/20 hover:bg-red-600 transition-all"><PhoneOff size={24} /></button>
-              </div>
-            </div>
-          ) : (
             <>
               {/* Room Header */}
               <div className="p-6 border-b border-secondary flex justify-between items-center">
@@ -352,12 +330,6 @@ const ChatAndConsult = () => {
                     }`}
                   >
                     <FileText size={20} />
-                  </button>
-                  <button 
-                    onClick={() => setInCall(true)}
-                    className="bg-primary text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-dark shadow-lg shadow-primary/10 transition-all cursor-pointer"
-                  >
-                    <Video size={18} /> Call Partner
                   </button>
                 </div>
               </div>
@@ -486,7 +458,6 @@ const ChatAndConsult = () => {
                 </div>
               </div>
             </>
-          )
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 space-y-4">
             <MessageSquare size={64} className="text-slate-300 animate-pulse" />
