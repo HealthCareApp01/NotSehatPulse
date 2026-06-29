@@ -13,7 +13,8 @@ import {
   PhoneCall,
   Video,
   Sun,
-  Moon
+  Moon,
+  Sparkles
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -22,11 +23,11 @@ import { logout } from '../store/slices/authSlice';
 import { setSearchTerm } from '../store/slices/productSlice';
 import { useTheme } from '../contexts/ThemeContext';
 
-const SidebarItem = ({ icon, label, path, active }) => (
+const SidebarItem = ({ icon, label, path, active, highlight }) => (
   <Link to={path}>
     <motion.div
       whileHover={{ scale: 1.1 }}
-      className={`p-4 rounded-2xl flex items-center justify-center cursor-pointer transition-all relative group ${active ? 'bg-primary text-white' : 'text-slate-400 hover:text-primary hover:bg-secondary'}`}
+      className={`p-4 rounded-2xl flex items-center justify-center cursor-pointer transition-all relative group ${active ? 'bg-primary text-white shadow-lg shadow-primary/20' : highlight ? 'bg-amber-50 text-amber-500 hover:bg-amber-100 border border-amber-200/50' : 'text-slate-400 hover:text-primary hover:bg-secondary'}`}
     >
       {icon}
       <div className="absolute left-20 bg-text text-white px-3 py-1 rounded-lg text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
@@ -232,7 +233,8 @@ const DashboardLayout = ({ children }) => {
       { icon: <Pill size={24} />, label: 'Pharmacy', path: '/pharmacy' },
       { icon: <FlaskConical size={24} />, label: 'Lab Tests', path: '/labs' },
       { icon: <Calendar size={24} />, label: 'Appointments', path: '/appointments' },
-      { icon: <MessageSquare size={24} />, label: 'Chat', path: '/chat' },
+      { icon: <MessageSquare size={24} />, label: 'Consultations', path: '/chat?filter=appointment' },
+      { icon: <Sparkles size={24} />, label: 'Subscribed Chat', path: '/chat?filter=subscription', highlight: true },
       { icon: <PlusCircle size={24} />, label: 'AI Checker', path: '/ai-symptom-checker' },
     ] : [])
   ] : [
@@ -556,13 +558,17 @@ const DashboardLayout = ({ children }) => {
           <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-white to-transparent z-10 pointer-events-none" />
 
           <nav className="flex-1 w-full flex flex-col gap-4 overflow-y-auto no-scrollbar py-4 items-center">
-            {sidebarItems.map((item) => (
-              <SidebarItem
-                key={item.label}
-                {...item}
-                active={location.pathname === item.path}
-              />
-            ))}
+            {sidebarItems.map((item, index) => {
+              const [basePath, queryStr] = item.path.split('?');
+              const isActive = location.pathname === basePath && (queryStr ? location.search.includes(queryStr) : true);
+              return (
+                <SidebarItem
+                  key={index}
+                  {...item}
+                  active={isActive}
+                />
+              );
+            })}
           </nav>
 
           <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent z-10 pointer-events-none" />

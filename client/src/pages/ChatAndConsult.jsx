@@ -25,6 +25,8 @@ import {
 const ChatAndConsult = () => {
   const { user, token } = useSelector((state) => state.auth);
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const filterType = searchParams.get('filter'); // 'appointment' or 'subscription'
   const preSelectedDoctorId = location.state?.preSelectedDoctorId;
 
   const [chatRooms, setChatRooms] = useState([]);
@@ -89,17 +91,23 @@ const ChatAndConsult = () => {
       if (response.data.success) {
         setChatRooms(response.data.data);
 
+        const availableRooms = filterType 
+           ? response.data.data.filter(r => filterType === 'subscription' ? r.type === 'Subscription' : r.type !== 'Subscription')
+           : response.data.data;
+
         // Handle redirection pre-selection if coming from FindDoctors
         if (preSelectedDoctorId) {
-          const matchingRoom = response.data.data.find(
+          const matchingRoom = availableRooms.find(
             (room) => room.partner?._id === preSelectedDoctorId
           );
           if (matchingRoom) {
             setActiveRoom(matchingRoom);
           }
-        } else if (response.data.data.length > 0 && !activeRoom) {
+        } else if (availableRooms.length > 0) {
           // Default select the first room
-          setActiveRoom(response.data.data[0]);
+          setActiveRoom(availableRooms[0]);
+        } else {
+          setActiveRoom(null);
         }
       }
     } catch (error) {
@@ -113,7 +121,7 @@ const ChatAndConsult = () => {
     if (token) {
       fetchChatRooms();
     }
-  }, [token]);
+  }, [token, filterType]); // Refetch and re-evaluate when filter changes
 
   // 3. Join Socket Room and Load Messages on selecting a chat room
   useEffect(() => {
@@ -196,10 +204,16 @@ const ChatAndConsult = () => {
     }
   };
 
-  // Filter rooms based on sidebar search input
-  const filteredRooms = chatRooms.filter((room) =>
-    room.partner?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter rooms based on sidebar search input and filter type
+  const filteredRooms = chatRooms
+    .filter(room => {
+      if (filterType === 'subscription') return room.type === 'Subscription';
+      if (filterType === 'appointment') return room.type !== 'Subscription';
+      return true;
+    })
+    .filter((room) =>
+      room.partner?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   return (
     <div className="h-full flex gap-6 overflow-hidden">
@@ -225,16 +239,26 @@ const ChatAndConsult = () => {
           ) : filteredRooms.length === 0 ? (
             <div className="p-8 text-center text-slate-400 space-y-4">
               <MessageSquare size={36} className="mx-auto text-slate-300" />
-              <p className="text-xs font-bold">No active conversations found.</p>
+              <p className="text-xs font-bold">No active {filterType === 'subscription' ? 'subscribed chats' : filterType === 'appointment' ? 'consultations' : 'conversations'} found.</p>
               {role === 'Patient' && (
                 <div className="pt-2">
                   <p className="text-[10px] mb-3">Book an appointment or subscribe to the Health Chat plan to start messaging!</p>
-                  <button 
-                    onClick={() => navigate('/find-doctors')}
-                    className="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer w-full"
-                  >
-                    Subscribe to Health Chat — ₹299/mo
-                  </button>
+                  {filterType !== 'appointment' && (
+                    <button 
+                      onClick={() => navigate('/find-doctors')}
+                      className="bg-amber-100 hover:bg-amber-200 text-amber-600 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer w-full flex items-center justify-center gap-1"
+                    >
+                      <Sparkles size={14} /> Subscribe to Health Chat
+                    </button>
+                  )}
+                  {filterType !== 'subscription' && (
+                    <button 
+                      onClick={() => navigate('/find-doctors')}
+                      className="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer w-full mt-2 flex items-center justify-center gap-1"
+                    >
+                      <Calendar size={14} /> Book a Consultation
+                    </button>
+                  )}
                 </div>
               )}
             </div>
