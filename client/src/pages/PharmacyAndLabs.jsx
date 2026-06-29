@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom';
 import { fetchMedicines, setSearchTerm } from '../store/slices/productSlice';
 import { fetchCart, addToCart, updateCartQuantity, removeFromCart, placeOrder, resetOrderSuccess } from '../store/slices/cartSlice';
 import AuthModal from '../components/AuthModal';
+import ProductModal from '../components/ProductModal';
 import axios from 'axios';
 
 const loadRazorpayScript = () => {
@@ -42,6 +43,7 @@ const PharmacyAndLabs = () => {
   const [paymentError, setPaymentError] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   useEffect(() => {
     dispatch(fetchMedicines(searchTerm));
@@ -181,6 +183,17 @@ const PharmacyAndLabs = () => {
 
   return (
     <div className="space-y-10">
+      <AnimatePresence>
+        {selectedProduct && (
+          <ProductModal
+            isOpen={!!selectedProduct}
+            onClose={() => setSelectedProduct(null)}
+            product={selectedProduct}
+            onAddToCart={handleAddToCart}
+            isLabTest={false}
+          />
+        )}
+      </AnimatePresence>
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
@@ -221,7 +234,8 @@ const PharmacyAndLabs = () => {
                 <motion.div
                   key={product._id}
                   whileHover={{ y: -5 }}
-                  className="bg-white p-6 rounded-[32px] border border-secondary shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all group"
+                  onClick={() => setSelectedProduct(product)}
+                  className="bg-white p-6 rounded-[32px] border border-secondary shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all group cursor-pointer"
                 >
                   <div className="relative h-48 mb-6 rounded-2xl overflow-hidden bg-secondary/30">
                     <img 
@@ -238,7 +252,10 @@ const PharmacyAndLabs = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-2xl font-black text-text">₹{product.price}</span>
                     <button
-                      onClick={() => handleAddToCart(product)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product);
+                      }}
                       className="bg-primary text-white p-3 rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20"
                     >
                       <Plus size={20} />
