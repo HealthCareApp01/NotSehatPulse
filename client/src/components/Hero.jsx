@@ -60,7 +60,7 @@ const Hero = () => {
                   Book Appointment
                 </button>
                 <button
-                  onClick={() => navigate('/medicines')}
+                  onClick={() => navigate('/pharmacy')}
                   className="bg-white border-2 border-secondary hover:border-primary text-text font-bold px-8 py-4 rounded-2xl transition-all"
                 >
                   Find Medicines

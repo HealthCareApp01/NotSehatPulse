@@ -213,7 +213,7 @@ const DashboardLayout = ({ children }) => {
   };
 
   const getSearchPlaceholder = () => {
-    if (location.pathname === '/medicines') return 'Search medicines, brands, or categories...';
+    if (location.pathname === '/pharmacy') return 'Search medicines, brands, or categories...';
     if (location.pathname === '/labs') return 'Search blood tests, checkups, or scans...';
     if (location.pathname === '/find-doctors') return 'Search Doctors, Specialists, etc...';
     if (location.pathname === '/appointments') return 'Search Appointments, Doctors, etc...';

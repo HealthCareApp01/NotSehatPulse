@@ -12,19 +12,10 @@ import {
   Video,
   ChevronRight,
   Settings,
-  Sparkles
+  Sparkles,
+  CheckCircle
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-
-const data = [
-  { name: 'Mon', appointments: 12 },
-  { name: 'Tue', appointments: 19 },
-  { name: 'Wed', appointments: 15 },
-  { name: 'Thu', appointments: 22 },
-  { name: 'Fri', appointments: 30 },
-  { name: 'Sat', appointments: 10 },
-  { name: 'Sun', appointments: 5 },
-];
 
 const StatCard = ({ icon, label, value, trend }) => (
   <div className="bg-white p-8 rounded-[32px] border border-secondary shadow-sm">
@@ -57,35 +48,123 @@ const DoctorDashboard = () => {
     subscriptionFee: 999,
     bio: ''
   });
+  
+  const [appointments, setAppointments] = useState([]);
+  const [stats, setStats] = useState({
+    totalPatients: 0,
+    totalAppointments: 0,
+    hoursSpent: 0,
+    earnings: 0
+  });
+  const [chartData, setChartData] = useState([]);
+
   const [showSettings, setShowSettings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSuccess, setSettingsSuccess] = useState(false);
 
-  // Fetch Doctor Profile Information
+  // Fetch Doctor Profile Information and Appointments
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchDashboardData = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/profile/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.data.success && res.data.data.profile) {
+        const [profileRes, apptsRes] = await Promise.all([
+          axios.get('http://localhost:5000/api/profile/me', {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          axios.get('http://localhost:5000/api/appointments/my', {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        ]);
+        
+        let fetchedFee = 500;
+        if (profileRes.data.success && profileRes.data.data.profile) {
+          const p = profileRes.data.data.profile;
+          fetchedFee = p.consultationFee || 500;
           setProfile({
-            specialization: res.data.data.profile.specialization || '',
-            degree: res.data.data.profile.degree || '',
-            experience: res.data.data.profile.experience || 0,
-            consultationFee: res.data.data.profile.consultationFee || 500,
-            subscriptionFee: res.data.data.profile.subscriptionFee || 999,
-            bio: res.data.data.profile.bio || ''
+            specialization: p.specialization || '',
+            degree: p.degree || '',
+            experience: p.experience || 0,
+            consultationFee: fetchedFee,
+            subscriptionFee: p.subscriptionFee || 999,
+            bio: p.bio || ''
           });
         }
+
+        if (apptsRes.data.success) {
+          const appts = apptsRes.data.data;
+          // Ensure we only process appointments where this user is the doctor
+          const doctorAppts = appts.filter(a => {
+            const docId = typeof a.doctorId === 'object' ? (a.doctorId?._id || a.doctorId?.id) : a.doctorId;
+            return docId === user?.id || docId === user?._id;
+          });
+          setAppointments(doctorAppts);
+
+          // Calculate stats
+          const uniquePatients = new Set(doctorAppts.map(a => typeof a.patientId === 'object' ? a.patientId._id : a.patientId));
+          const completedAppts = doctorAppts.filter(a => a.status === 'Completed');
+          
+          setStats({
+            totalPatients: uniquePatients.size,
+            totalAppointments: doctorAppts.length,
+            hoursSpent: Math.round(completedAppts.length * 0.5), // Assuming 30 mins per appointment
+            earnings: completedAppts.length * fetchedFee
+          });
+
+          // Generate chart data (last 7 days)
+          const last7Days = Array.from({length: 7}, (_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - (6 - i));
+            return d;
+          });
+
+          const cData = last7Days.map(date => {
+            const dayAppts = doctorAppts.filter(a => {
+              const aDate = new Date(a.date);
+              return aDate.getDate() === date.getDate() && 
+                     aDate.getMonth() === date.getMonth() && 
+                     aDate.getFullYear() === date.getFullYear();
+            });
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            return {
+              name: days[date.getDay()],
+              appointments: dayAppts.length
+            };
+          });
+          setChartData(cData);
+        }
       } catch (err) {
-        console.error('Error fetching doctor profile:', err);
+        console.error('Error fetching dashboard data:', err);
       }
     };
     if (token) {
-      fetchProfile();
+      fetchDashboardData();
     }
-  }, [token]);
+  }, [token, user]);
+
+  const formatCurrency = (value) => {
+    if (value >= 100000) {
+      return `₹${(value / 100000).toFixed(1)}L`;
+    }
+    return `₹${value.toLocaleString('en-IN')}`;
+  };
+
+  const markAsConsulted = async (apptId) => {
+    try {
+      await axios.post(`http://localhost:5000/api/appointments/${apptId}/consulted`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Update local state to reflect the change
+      setAppointments(prev => prev.map(a => a._id === apptId ? { ...a, status: 'Completed' } : a));
+      
+      // Update stats optimistically
+      setStats(prev => ({
+        ...prev,
+        hoursSpent: prev.hoursSpent + 0.5,
+        earnings: prev.earnings + profile.consultationFee
+      }));
+    } catch (err) {
+      console.error('Failed to mark appointment as consulted', err);
+    }
+  };
 
   return (
     <div className="space-y-10">
@@ -114,25 +193,24 @@ const DoctorDashboard = () => {
 
       {/* Stats Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        <StatCard icon={<Users size={28} />} label="Total Patients" value="1,284" trend="+12.5%" />
-        <StatCard icon={<Calendar size={28} />} label="Appointments" value="48" trend="+8.2%" />
-        <StatCard icon={<Clock size={28} />} label="Hours Spent" value="240" />
-        <StatCard icon={<TrendingUp size={28} />} label="Earnings" value="₹1.2L" trend="+15%" />
+        <StatCard icon={<Users size={28} />} label="Total Patients" value={stats.totalPatients.toLocaleString()} />
+        <StatCard icon={<Calendar size={28} />} label="Appointments" value={stats.totalAppointments.toLocaleString()} />
+        <StatCard icon={<Clock size={28} />} label="Hours Spent" value={stats.hoursSpent} />
+        <StatCard icon={<TrendingUp size={28} />} label="Earnings" value={formatCurrency(stats.earnings)} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Appointments Analytic Recharts Area */}
         <div className="lg:col-span-2 bg-white p-8 rounded-[40px] border border-secondary shadow-sm">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="text-xl font-bold text-text">Appointment Analytics</h3>
+            <h3 className="text-xl font-bold text-text">Appointment Analytics (Last 7 Days)</h3>
             <select className="bg-secondary/50 border-none rounded-xl px-4 py-2 font-bold text-text text-sm outline-none">
-              <option>This Week</option>
-              <option>Last Week</option>
+              <option>Last 7 Days</option>
             </select>
           </div>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data}>
+              <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorApp" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#2ECC71" stopOpacity={0.1}/>
@@ -141,7 +219,7 @@ const DoctorDashboard = () => {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EAF9F0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} allowDecimals={false} />
                 <Tooltip 
                   contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}}
                 />
@@ -151,29 +229,52 @@ const DoctorDashboard = () => {
           </div>
         </div>
 
-        {/* Recent Patients List */}
+        {/* Upcoming Appointments List */}
         <div className="bg-white p-8 rounded-[40px] border border-secondary shadow-sm flex flex-col">
-          <h3 className="text-xl font-bold text-text mb-8">Recent Patients</h3>
-          <div className="space-y-6 flex-1">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-center justify-between group cursor-pointer" onClick={() => navigate('/chat')}>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center font-bold text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                    JS
+          <h3 className="text-xl font-bold text-text mb-8">Upcoming Appointments</h3>
+          <div className="space-y-6 flex-1 overflow-y-auto max-h-[300px] pr-2 no-scrollbar">
+            {appointments.filter(a => a.status === 'Confirmed' || a.status === 'Pending').length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                <Calendar size={48} className="mb-4 opacity-20" />
+                <p>No upcoming appointments</p>
+              </div>
+            ) : (
+              appointments
+                .filter(a => a.status === 'Confirmed' || a.status === 'Pending')
+                .slice(0, 5)
+                .map((apt) => (
+                <div key={apt._id} className="flex items-center justify-between group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center font-bold text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                      {apt.patientId?.name ? apt.patientId.name.substring(0, 2).toUpperCase() : 'PT'}
+                    </div>
+                    <div>
+                      <span className="block font-bold text-text group-hover:text-primary transition-colors">{apt.patientId?.name || 'Patient'}</span>
+                      <span className="text-xs text-slate-400">{new Date(apt.date).toLocaleDateString()} • {apt.timeSlot}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="block font-bold text-text group-hover:text-primary transition-colors">John Smith</span>
-                    <span className="text-xs text-slate-400">Cardiology • 10:30 AM</span>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => markAsConsulted(apt._id)}
+                      className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-slate-400 hover:text-green-500 hover:bg-green-50 transition-all cursor-pointer"
+                      title="Mark as Consulted"
+                    >
+                      <CheckCircle size={18} />
+                    </button>
+                    <button 
+                      onClick={() => navigate(`/consultation/${apt._id}?patientId=${apt.patientId?._id}&apptId=${apt._id}`)}
+                      className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary hover:text-white hover:bg-primary transition-all cursor-pointer"
+                      title="Join Video Call"
+                    >
+                      <Video size={18} />
+                    </button>
                   </div>
                 </div>
-                <button className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 transition-all cursor-pointer">
-                  <Video size={18} />
-                </button>
-              </div>
-            ))}
+              ))
+            )}
           </div>
-          <button className="w-full mt-8 py-4 bg-secondary rounded-2xl font-bold text-primary flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-all cursor-pointer" onClick={() => navigate('/chat')}>
-            View All Patients <ChevronRight size={18} />
+          <button className="w-full mt-8 py-4 bg-secondary rounded-2xl font-bold text-primary flex items-center justify-center gap-2 hover:bg-primary hover:text-white transition-all cursor-pointer" onClick={() => navigate('/appointments')}>
+            View All Schedule <ChevronRight size={18} />
           </button>
         </div>
       </div>
