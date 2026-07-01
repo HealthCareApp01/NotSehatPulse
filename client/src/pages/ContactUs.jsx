@@ -4,9 +4,8 @@ import { Mail, Phone, MapPin, Send, CheckCircle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
-// Import images (assuming they are in assets/doctors)
-import doctor1 from '../assets/doctors/doctor1.png';
-import doctor2 from '../assets/doctors/doctor2.png';
+const doctor1 = 'https://images.unsplash.com/photo-1559839734-2b71f1536780?auto=format&fit=crop&q=80&w=600&h=600';
+const doctor2 = 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=600&h=600';
 
 const ContactUs = () => {
   const [currentImage, setCurrentImage] = useState(0);

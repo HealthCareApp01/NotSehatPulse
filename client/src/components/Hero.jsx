@@ -11,6 +11,28 @@ const Hero = () => {
       <div className="absolute top-0 right-0 -z-10 w-1/2 h-full bg-secondary/30 rounded-l-[100px] hidden lg:block" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Top Video Banner running as a GIF */}
+        <div className="w-full mb-10 rounded-[32px] overflow-hidden shadow-xl border border-secondary relative h-64 sm:h-[400px] lg:h-[480px] bg-slate-950 group">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover opacity-90"
+          >
+            <source src="https://res.cloudinary.com/uwv2e0xt/video/upload/v1782895777/healthcare_assets/ilaqkeatpbivq59ehlid.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent flex items-center p-8 sm:p-12 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="max-w-md space-y-2">
+              <span className="inline-block bg-primary text-white text-[10px] uppercase font-black tracking-widest px-3 py-1 rounded-full">
+                Introducing heAlthI
+              </span>
+              <h2 className="text-white text-2xl sm:text-4xl font-black leading-tight">Advanced Care at Your Fingertips</h2>
+            </div>
+          </div>
+        </div>
+
         <div className="lg:flex items-center gap-12">
           {/* Left Content */}
           <div className="lg:w-1/2 space-y-8">

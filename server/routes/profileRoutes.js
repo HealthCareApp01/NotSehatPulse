@@ -3,8 +3,19 @@ import { protect } from '../middleware/auth.js';
 import User from '../models/User.js';
 import DoctorProfile from '../models/DoctorProfile.js';
 import PatientProfile from '../models/PatientProfile.js';
+import { v2 as cloudinary } from 'cloudinary';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const router = express.Router();
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // @desc    Get current user profile (including separate profile collection data)
 // @route   GET /api/profile/me
@@ -42,7 +53,8 @@ router.get('/me', protect, async (req, res) => {
           name: user.name,
           email: user.email,
           role: user.role,
-          isVerified: user.isVerified
+          isVerified: user.isVerified,
+          profilePicture: user.profilePicture || ''
         },
         profile
       }
@@ -118,7 +130,8 @@ router.put('/me', protect, async (req, res) => {
           name: user.name,
           email: user.email,
           role: user.role,
-          isVerified: user.isVerified
+          isVerified: user.isVerified,
+          profilePicture: user.profilePicture || ''
         },
         profile
       }
@@ -139,7 +152,7 @@ router.get('/doctors', async (req, res) => {
     // Fetch all doctor profiles and populate user details
     let doctorProfiles = await DoctorProfile.find().populate({
       path: 'userId',
-      select: 'name email role isVerified'
+      select: 'name email role isVerified profilePicture'
     });
 
     // Filter out if the linked user was deleted or is not a doctor
@@ -165,6 +178,48 @@ router.get('/doctors', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching doctors:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @desc    Update current user profile picture
+// @route   PUT /api/profile/picture
+// @access  Private
+router.put('/picture', protect, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) {
+      return res.status(400).json({ success: false, message: 'No image data provided' });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    let imageUrl = '';
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.warn("Cloudinary is not configured. Saving image locally/directly as base64 in database for testing.");
+      imageUrl = image; // fallback to storing base64 directly
+    } else {
+      const uploadResponse = await cloudinary.uploader.upload(image, {
+        folder: 'healthcare_profiles',
+      });
+      imageUrl = uploadResponse.secure_url;
+    }
+
+    user.profilePicture = imageUrl;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Profile picture updated successfully',
+      data: {
+        profilePicture: imageUrl
+      }
+    });
+  } catch (error) {
+    console.error('Error updating profile picture:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

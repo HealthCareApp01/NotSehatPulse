@@ -26,6 +26,16 @@ const DoctorAvatar = ({ doctor, className }) => {
     ? nameClean.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
     : 'DR';
 
+  if (doctor.userId?.profilePicture) {
+    return (
+      <img
+        src={doctor.userId.profilePicture}
+        alt={doctor.userId?.name}
+        className={`block object-cover ${className}`}
+      />
+    );
+  }
+
   if (!getDoctorImage(doctor.specialization)) {
     return (
       <div className={`bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center font-black text-primary text-2xl ${className}`}>
@@ -223,7 +233,7 @@ const FindDoctors = () => {
         key: keyId,
         amount: order.amount,
         currency: order.currency,
-        name: 'NotSehatPulse Healthcare',
+        name: 'heAlthI',
         description: `Consultation Booking - Dr. ${activeDoctor.userId?.name}`,
         image: 'https://images.unsplash.com/photo-1559839734-2b71f1536780?auto=format&fit=crop&q=80&w=300&h=300',
         order_id: order.id,
@@ -315,7 +325,7 @@ const FindDoctors = () => {
         key: keyId,
         amount: order.amount,
         currency: order.currency,
-        name: 'NotSehatPulse Health Chat',
+        name: 'heAlthI',
         description: `Platform Chat Subscription (All Specialists)`,
         image: 'https://images.unsplash.com/photo-1559839734-2b71f1536780?auto=format&fit=crop&q=80&w=300&h=300',
         order_id: order.id,

@@ -44,11 +44,9 @@ const Navbar = () => {
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
         <div className='flex justify-between h-16 items-center'>
           <Link to="/" className='flex items-center gap-2'>
-            <div className='w-10 h-10 bg-primary rounded-xl flex items-center justify-center medical-gradient transform rotate-3'>
-              <span className='text-white font-bold text-xl'>H</span>
-            </div>
+            <img src="https://res.cloudinary.com/uwv2e0xt/image/upload/v1782896157/healthcare_assets/blqjvr5f2jt2juacc1ii.jpg" alt="heAlthI logo" className="w-10 h-10 object-contain rounded-xl" />
             <span className='text-2xl font-bold bg-gradient-to-r from-primary-dark to-primary bg-clip-text text-transparent'>
-              HealthCare
+              heAlthI
             </span>
           </Link>
 

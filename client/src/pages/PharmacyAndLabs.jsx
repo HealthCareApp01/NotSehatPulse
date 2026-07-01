@@ -117,7 +117,7 @@ const PharmacyAndLabs = () => {
         key: keyId,
         amount: order.amount,
         currency: order.currency,
-        name: 'NotSehatPulse Pharmacy',
+        name: 'heAlthI',
         description: 'Medicine & Labs Purchase',
         image: 'https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&q=80&w=300&h=300',
         order_id: order.id,

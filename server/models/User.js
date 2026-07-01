@@ -10,6 +10,7 @@ const UserSchema = new mongoose.Schema({
     default: 'Patient'
   },
   isVerified: { type: Boolean, default: false }, // For Dummy medical verification
+  profilePicture: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
 

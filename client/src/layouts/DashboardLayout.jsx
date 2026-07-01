@@ -19,7 +19,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { io } from 'socket.io-client';
-import { logout } from '../store/slices/authSlice';
+import { logout, updateUserSuccess } from '../store/slices/authSlice';
 import { setSearchTerm } from '../store/slices/productSlice';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -328,9 +328,56 @@ const DashboardLayout = ({ children }) => {
                 <PlusCircle size={32} />
               </div>
               <h2 className="text-2xl font-black text-text mb-2">Complete Your Medical Profile</h2>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              <p className="text-xs text-slate-500 font-medium leading-relaxed mb-6">
                 Provide your basic health details so our specialists can evaluate and guide you accurately. Omitted fields will automatically save as "NA".
               </p>
+
+              {/* Profile Picture Uploader */}
+              <div className="flex flex-col items-center justify-center mb-4">
+                <div className="relative group w-20 h-20 rounded-2xl overflow-hidden border-2 border-primary/20 hover:border-primary transition-all cursor-pointer bg-slate-50 flex items-center justify-center">
+                  {user?.profilePicture ? (
+                    <img src={user.profilePicture} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl font-black text-primary">{user?.name?.charAt(0) || 'U'}</span>
+                  )}
+                  <label className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Upload</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.readAsDataURL(file);
+                        reader.onloadend = async () => {
+                          try {
+                            const res = await fetch('http://localhost:5000/api/profile/picture', {
+                              method: 'PUT',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${token}`
+                              },
+                              body: JSON.stringify({ image: reader.result })
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              dispatch(updateUserSuccess({ profilePicture: data.data.profilePicture }));
+                            } else {
+                              alert(data.message || 'Failed to upload profile picture');
+                            }
+                          } catch (err) {
+                            console.error(err);
+                            alert(`Error uploading picture: ${err.message || 'Network error'}`);
+                          }
+                        };
+                      }}
+                    />
+                  </label>
+                </div>
+                <span className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wider">Upload profile picture</span>
+              </div>
             </div>
 
             <form onSubmit={async (e) => {
@@ -461,7 +508,54 @@ const DashboardLayout = ({ children }) => {
             </div>
             
             <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">Complete Your Profile</h2>
-            <p className="text-center text-slate-500 text-sm mb-8">Please fill in these mandatory details to start accepting appointments.</p>
+            <p className="text-center text-slate-500 text-sm mb-6">Please fill in these mandatory details to start accepting appointments.</p>
+
+            {/* Profile Picture Uploader */}
+            <div className="flex flex-col items-center justify-center mb-6">
+              <div className="relative group w-20 h-20 rounded-2xl overflow-hidden border-2 border-primary/20 hover:border-primary transition-all cursor-pointer bg-slate-50 flex items-center justify-center">
+                {user?.profilePicture ? (
+                  <img src={user.profilePicture} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl font-black text-primary">{user?.name?.charAt(0) || 'U'}</span>
+                )}
+                <label className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Upload</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.readAsDataURL(file);
+                      reader.onloadend = async () => {
+                        try {
+                          const res = await fetch('http://localhost:5000/api/profile/picture', {
+                            method: 'PUT',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              Authorization: `Bearer ${token}`
+                            },
+                            body: JSON.stringify({ image: reader.result })
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            dispatch(updateUserSuccess({ profilePicture: data.data.profilePicture }));
+                          } else {
+                            alert(data.message || 'Failed to upload profile picture');
+                          }
+                        } catch (err) {
+                          console.error(err);
+                          alert(`Error uploading picture: ${err.message || 'Network error'}`);
+                        }
+                      };
+                    }}
+                  />
+                </label>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wider">Upload profile picture</span>
+            </div>
 
             <form onSubmit={async (e) => {
               e.preventDefault();
@@ -549,9 +643,9 @@ const DashboardLayout = ({ children }) => {
       <aside className="w-24 bg-white border-r border-secondary flex flex-col items-center py-8 gap-8">
         <button
           onClick={() => navigate('/')}
-          className="w-12 h-12 bg-primary rounded-2xl flex-shrink-0 flex items-center justify-center medical-gradient"
+          className="w-12 h-12 bg-white rounded-2xl flex-shrink-0 flex items-center justify-center border border-secondary shadow-sm hover:scale-105 transition-all overflow-hidden"
         >
-          <span className="text-white font-black text-xl">H</span>
+          <img src="https://res.cloudinary.com/uwv2e0xt/image/upload/v1782896157/healthcare_assets/blqjvr5f2jt2juacc1ii.jpg" alt="Logo" className="w-full h-full object-cover" />
         </button>
 
         <div className="flex-1 w-full relative flex flex-col items-center overflow-hidden">
@@ -651,7 +745,11 @@ const DashboardLayout = ({ children }) => {
                   className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-primary flex items-center justify-center bg-secondary cursor-pointer hover:shadow-lg hover:shadow-primary/20 transition-all group"
                   title="Edit Medical Profile"
                 >
-                  <span className="text-primary font-bold group-hover:scale-110 transition-transform">{user?.name?.charAt(0) || 'U'}</span>
+                  {user?.profilePicture ? (
+                    <img src={user.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-primary font-bold group-hover:scale-110 transition-transform">{user?.name?.charAt(0) || 'U'}</span>
+                  )}
                 </button>
               </>
             ) : (

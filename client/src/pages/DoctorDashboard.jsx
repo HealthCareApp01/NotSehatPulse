@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { updateUserSuccess } from '../store/slices/authSlice';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
@@ -45,6 +46,7 @@ const StatCard = ({ icon, label, value, trend }) => (
 
 const DoctorDashboard = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { user, token } = useSelector((state) => state.auth);
 
   const [profile, setProfile] = useState({
@@ -200,7 +202,48 @@ const DoctorDashboard = () => {
                   </button>
                 </div>
 
-                <div className="space-y-4">
+                 <div className="space-y-4">
+                  {/* Profile Picture Uploader */}
+                  <div className="flex flex-col items-center justify-center pb-4 border-b border-secondary">
+                    <div className="relative group w-20 h-20 rounded-2xl overflow-hidden border-2 border-primary/20 hover:border-primary transition-all cursor-pointer bg-slate-50 flex items-center justify-center">
+                      {user?.profilePicture ? (
+                        <img src={user.profilePicture} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-2xl font-black text-primary">{user?.name?.charAt(0) || 'U'}</span>
+                      )}
+                      <label className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Upload</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.readAsDataURL(file);
+                            reader.onloadend = async () => {
+                              try {
+                                const res = await axios.put('http://localhost:5000/api/profile/picture', { image: reader.result }, {
+                                  headers: { Authorization: `Bearer ${token}` }
+                                });
+                                if (res.data.success) {
+                                  dispatch(updateUserSuccess({ profilePicture: res.data.data.profilePicture }));
+                                } else {
+                                  alert(res.data.message || 'Failed to upload profile picture');
+                                }
+                              } catch (err) {
+                                console.error(err);
+                                const errMsg = err.response?.data?.message || err.message || 'Error uploading picture';
+                                alert(`Error uploading picture: ${errMsg}`);
+                              }
+                            };
+                          }}
+                        />
+                      </label>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wider">Change Profile Picture</span>
+                  </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Specialization</label>
                     <input 
