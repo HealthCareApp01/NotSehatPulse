@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import io from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,6 +25,7 @@ import {
 const ChatAndConsult = () => {
   const { user, token } = useSelector((state) => state.auth);
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const filterType = searchParams.get('filter'); // 'appointment' or 'subscription'
   const preSelectedDoctorId = location.state?.preSelectedDoctorId;
@@ -39,9 +40,30 @@ const ChatAndConsult = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDisclaimer, setShowDisclaimer] = useState(true);
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState({});
 
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const activeRoomRef = useRef(null);
+  const filterTypeRef = useRef(filterType);
+
+  useEffect(() => {
+    filterTypeRef.current = filterType;
+  }, [filterType]);
+
+  useEffect(() => {
+    activeRoomRef.current = activeRoom;
+    if (activeRoom) {
+      if (activeRoom.type === 'Subscription') {
+        setSelectedSpecialization(activeRoom.specialization || '');
+      }
+      setUnreadCounts(prev => ({
+        ...prev,
+        [activeRoom.roomId]: 0
+      }));
+    }
+  }, [activeRoom]);
 
   const role = user?.role?.toLowerCase() || 'patient';
 
@@ -50,8 +72,9 @@ const ChatAndConsult = () => {
     socketRef.current = io('http://localhost:5000');
 
     socketRef.current.on('receive-message', (data) => {
+      const currentActiveRoom = activeRoomRef.current;
       // If message is in the currently active room, append it
-      if (activeRoom && data.roomId === activeRoom.roomId) {
+      if (currentActiveRoom && data.roomId === currentActiveRoom.roomId) {
         setMessages((prev) => {
           // Avoid duplicate appends if we sent it locally
           const exists = prev.some(
@@ -68,6 +91,11 @@ const ChatAndConsult = () => {
             timestamp: new Date()
           }];
         });
+      } else {
+        setUnreadCounts(prev => ({
+          ...prev,
+          [data.roomId]: (prev[data.roomId] || 0) + 1
+        }));
       }
 
       // Refresh room list to update sidebar previews
@@ -79,7 +107,7 @@ const ChatAndConsult = () => {
         socketRef.current.disconnect();
       }
     };
-  }, [activeRoom]);
+  }, []);
 
   // 2. Fetch Chat Rooms / Active Contacts
   const fetchChatRooms = async () => {
@@ -90,8 +118,9 @@ const ChatAndConsult = () => {
       if (response.data.success) {
         setChatRooms(response.data.data);
 
-        const availableRooms = filterType 
-           ? response.data.data.filter(r => filterType === 'subscription' ? r.type === 'Subscription' : r.type !== 'Subscription')
+        const currentFilterType = filterTypeRef.current;
+        const availableRooms = currentFilterType 
+           ? response.data.data.filter(r => currentFilterType === 'subscription' ? r.type === 'Subscription' : r.type !== 'Subscription')
            : response.data.data;
 
         // Handle redirection pre-selection if coming from FindDoctors
@@ -101,6 +130,19 @@ const ChatAndConsult = () => {
           );
           if (matchingRoom) {
             setActiveRoom(matchingRoom);
+          }
+        } else if (activeRoomRef.current) {
+          const currentActive = availableRooms.find(
+            (room) => room.roomId === activeRoomRef.current.roomId
+          );
+          if (currentActive) {
+            setActiveRoom(currentActive);
+          } else if (activeRoomRef.current.type === 'Subscription') {
+            // Keep the selected subscription room even if it has no messages in backend list yet
+          } else if (availableRooms.length > 0) {
+            setActiveRoom(availableRooms[0]);
+          } else {
+            setActiveRoom(null);
           }
         } else if (availableRooms.length > 0) {
           // Default select the first room
@@ -147,7 +189,7 @@ const ChatAndConsult = () => {
 
       fetchMessages();
     }
-  }, [activeRoom]);
+  }, [activeRoom?.roomId]);
 
   // Reset disclaimer every time user opens a new chat room
   useEffect(() => {
@@ -203,31 +245,83 @@ const ChatAndConsult = () => {
     }
   };
 
-  // Filter rooms based on sidebar search input and filter type
+  // Filter rooms based on filter type
   const filteredRooms = chatRooms
     .filter(room => {
       if (filterType === 'subscription') return room.type === 'Subscription';
       if (filterType === 'appointment') return room.type !== 'Subscription';
       return true;
-    })
-    .filter((room) =>
-      room.partner?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    });
 
   return (
     <div className="h-full flex gap-6 overflow-hidden">
       {/* Sidebar: Chat Channels List */}
       <div className="w-80 bg-white border border-secondary rounded-[40px] flex flex-col overflow-hidden">
         <div className="p-6 border-b border-secondary">
-          <div className="bg-secondary/50 px-4 py-2.5 rounded-2xl flex items-center gap-2">
-            <Search size={18} className="text-slate-400" />
-            <input 
-              placeholder="Search chat..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent outline-none text-xs font-bold w-full" 
-            />
-          </div>
+          {filterType === 'subscription' && role === 'patient' ? (
+            <div className="relative">
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="w-full bg-white border-2 border-slate-200 focus:border-primary hover:border-primary px-4 py-3 rounded-2xl flex items-center justify-between transition-all cursor-pointer font-bold text-xs text-slate-700 shadow-sm"
+              >
+                <span className="flex items-center gap-2">
+                  <Sparkles size={16} className="text-amber-500 fill-amber-500" />
+                  {selectedSpecialization || 'Select Specialization...'}
+                </span>
+                <span className="text-[10px] text-slate-400">{isDropdownOpen ? '▲' : '▼'}</span>
+              </button>
+              
+              <AnimatePresence>
+                {isDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto"
+                  >
+                    {['General Physician', 'Cardiologist', 'Dermatologist', 'Pediatrician', 'Neurologist', 'Orthopedic', 'Psychiatrist'].map((spec) => (
+                      <div
+                        key={spec}
+                        onClick={() => {
+                          setSelectedSpecialization(spec);
+                          setIsDropdownOpen(false);
+                          const targetRoomId = `sub_chat_${user.id || user._id}_${spec}`;
+                          const existing = chatRooms.find(r => r.roomId === targetRoomId);
+                          if (existing) {
+                            setActiveRoom(existing);
+                          } else {
+                            setActiveRoom({
+                              roomId: targetRoomId,
+                              type: 'Subscription',
+                              partner: {
+                                _id: 'system_health_chat',
+                                name: `Health Chat - ${spec}`,
+                                role: 'System',
+                                specialization: spec,
+                                bio: `Smart chat that routes your queries to the right specialist based on your symptoms.`,
+                              },
+                              specialization: spec
+                            });
+                          }
+                        }}
+                        className="px-5 py-3 hover:bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 transition-colors flex items-center gap-2 border-b border-slate-50 last:border-0"
+                      >
+                        <Sparkles size={12} className="text-amber-500" />
+                        {spec}
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 py-1">
+              <MessageSquare size={18} className="text-primary" />
+              <span className="text-sm font-extrabold text-text">
+                {filterType === 'subscription' ? 'Subscribed Chats' : 'Consultations'}
+              </span>
+            </div>
+          )}
         </div>
         
         <div className="flex-1 overflow-y-auto">
@@ -293,9 +387,21 @@ const ChatAndConsult = () => {
                         <span className="text-[9px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.5 rounded-full uppercase scale-90">Appt</span>
                       )}
                     </div>
-                    <span className="text-[10px] text-slate-400 truncate block mt-0.5">
-                      {room.lastMessage ? room.lastMessage.content : 'No messages yet'}
-                    </span>
+                    {room.specialization && (
+                      <div className="text-[9px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.5 rounded-md w-max mt-1 uppercase scale-90 origin-left">
+                        {room.specialization}
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center mt-0.5">
+                      <span className="text-[10px] text-slate-400 truncate block">
+                        {room.lastMessage ? room.lastMessage.content : 'No messages yet'}
+                      </span>
+                      {unreadCounts[room.roomId] > 0 && (
+                        <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center ml-2 scale-90 flex-shrink-0 animate-pulse">
+                          {unreadCounts[room.roomId]}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -318,6 +424,11 @@ const ChatAndConsult = () => {
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-text">{activeRoom.partner?.name}</h3>
                       {activeRoom.type === 'Subscription' && <Sparkles size={16} className="text-yellow-500 fill-yellow-500" />}
+                      {activeRoom.specialization && (
+                        <span className="text-[10px] bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded-full uppercase ml-2">
+                          {activeRoom.specialization}
+                        </span>
+                      )}
                     </div>
                     <span className="text-xs text-green-500 font-bold">• Active Now</span>
                   </div>
@@ -422,25 +533,6 @@ const ChatAndConsult = () => {
 
               {/* Messaging Input Box */}
               <div className="p-6 bg-slate-50 border-t border-secondary flex flex-col gap-3">
-                {activeRoom.type === 'Subscription' && user.role === 'Patient' && (
-                  <div className="bg-white border border-secondary px-4 py-2 rounded-xl flex items-center gap-3">
-                    <Sparkles size={16} className="text-primary" />
-                    <select
-                      value={selectedSpecialization}
-                      onChange={(e) => setSelectedSpecialization(e.target.value)}
-                      className="flex-1 bg-transparent outline-none font-bold text-sm text-slate-700 cursor-pointer"
-                    >
-                      <option value="" disabled>Select Doctor Specialization...</option>
-                      <option value="General Physician">General Physician</option>
-                      <option value="Cardiologist">Cardiologist</option>
-                      <option value="Dermatologist">Dermatologist</option>
-                      <option value="Pediatrician">Pediatrician</option>
-                      <option value="Neurologist">Neurologist</option>
-                      <option value="Orthopedic">Orthopedic</option>
-                      <option value="Psychiatrist">Psychiatrist</option>
-                    </select>
-                  </div>
-                )}
                 <div className="bg-white border-2 border-secondary focus-within:border-primary px-6 py-2 rounded-2xl flex items-center gap-4 transition-all">
                   <input 
                     placeholder="Type your message..." 

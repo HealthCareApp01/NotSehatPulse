@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import { protect } from '../middleware/auth.js';
 import Appointment from '../models/Appointment.js';
 import Subscription from '../models/Subscription.js';
@@ -37,20 +38,28 @@ router.get('/rooms', protect, async (req, res) => {
       });
 
       if (activeSubscription) {
-        // Create the single "Health Chat" room for the patient
-        const roomId = `sub_chat_${userId}`;
-        roomsMap.set(roomId, {
-          partner: {
-            _id: 'system_health_chat',
-            name: 'Health Chat',
-            role: 'System',
-            specialization: 'Multiple Specialists',
-            bio: 'Smart chat that routes your queries to the right specialist based on your symptoms.',
-          },
-          type: 'Subscription',
-          endDate: activeSubscription.endDate,
-          roomId: roomId
-        });
+        // Find all unique specialization rooms patient has already chatted in
+        const existingSubRooms = await Message.find({
+          isSubscriptionChat: true,
+          roomId: new RegExp(`^sub_chat_${userId}_`)
+        }).distinct('roomId');
+
+        for (const rId of existingSubRooms) {
+          const spec = rId.split('_')[3] || 'General Physician';
+          roomsMap.set(rId, {
+            partner: {
+              _id: 'system_health_chat',
+              name: `Health Chat - ${spec}`,
+              role: 'System',
+              specialization: spec,
+              bio: `Smart chat that routes your queries to the right specialist based on your symptoms.`,
+            },
+            specialization: spec,
+            type: 'Subscription',
+            endDate: activeSubscription.endDate,
+            roomId: rId
+          });
+        }
       }
 
       // 2. Get doctors with confirmed appointments
@@ -84,6 +93,49 @@ router.get('/rooms', protect, async (req, res) => {
         }
       }
 
+    } else if (user.role === 'Admin') {
+      // Get all subscription chats
+      const subMessages = await Message.find({ isSubscriptionChat: true })
+        .populate('senderId', 'name email role')
+        .populate('receiverId', 'name email role');
+
+      for (const msg of subMessages) {
+        const roomId = msg.roomId;
+        if (!roomsMap.has(roomId)) {
+          const parts = roomId.split('_');
+          if (parts.length < 4) continue; // Skip old unpartitioned rooms
+          const patientId = parts[2];
+          const spec = parts[3] || msg.detectedSpecialization || 'General Physician';
+
+          let patientUser = msg.senderId?.role === 'Patient' ? msg.senderId : 
+                            (msg.receiverId?.role === 'Patient' ? msg.receiverId : null);
+          
+          if (!patientUser && mongoose.isValidObjectId(patientId)) {
+            patientUser = await User.findById(patientId);
+          }
+
+          if (patientUser) {
+            const patProfile = await PatientProfile.findOne({ userId: patientUser._id });
+            roomsMap.set(roomId, {
+              partner: {
+                _id: patientUser._id,
+                name: patientUser.name,
+                email: patientUser.email,
+                role: 'Patient',
+                age: patProfile?.age || 'NA',
+                height: patProfile?.height || 'NA',
+                weight: patProfile?.weight || 'NA',
+                disease: patProfile?.disease || 'NA',
+                allergy: patProfile?.allergy || 'NA',
+                history: patProfile?.medicalHistory || 'NA'
+              },
+              specialization: spec,
+              type: 'Subscription',
+              roomId: roomId
+            });
+          }
+        }
+      }
     } else if (user.role === 'Doctor') {
       // 1. Get patients from Subscription messages routed to this doctor
       // Find all distinct rooms where this doctor was assigned in a subscription chat

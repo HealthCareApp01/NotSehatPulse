@@ -20,6 +20,7 @@ import cron from 'node-cron';
 import Appointment from './models/Appointment.js';
 import DoctorProfile from './models/DoctorProfile.js';
 import { assignDoctor } from './utils/keywordRouter.js';
+import User from './models/User.js';
 
 dotenv.config();
 
@@ -116,42 +117,35 @@ io.on('connection', (socket) => {
     socket.to(data.roomId).emit('call-declined');
   });
 
-  // Real-time Chat
+// Real-time Chat
   socket.on('send-message', async (data) => {
     try {
       let { senderId, receiverId, content, roomId, senderRole, selectedSpecialization } = data;
       
-      let assignedDoctorId = null;
       let isSubscriptionChat = roomId.startsWith('sub_chat_');
 
-      if (isSubscriptionChat && senderRole === 'Patient') {
-        if (selectedSpecialization) {
-          // 1. Assign doctor based on explicit selection
-          assignedDoctorId = await assignDoctor(selectedSpecialization);
-        }
-
-        // 2. Sticky routing if no new specialization provided or no doctor found
-        if (!assignedDoctorId) {
-          const lastMsg = await Message.findOne({ roomId, senderId, assignedDoctorId: { $ne: null } }).sort({ timestamp: -1 });
-          if (lastMsg) {
-            assignedDoctorId = lastMsg.assignedDoctorId;
-            // Retain the specialization from the last message for context
-            selectedSpecialization = lastMsg.detectedSpecialization; 
+      if (isSubscriptionChat) {
+        if (senderRole === 'Patient') {
+          // Find Admin user
+          const adminUser = await User.findOne({ role: 'Admin' });
+          if (adminUser) {
+            receiverId = adminUser._id;
+          }
+          if (!selectedSpecialization) {
+            const parts = roomId.split('_');
+            if (parts.length > 3) {
+              selectedSpecialization = parts[3];
+            }
+          }
+        } else if (senderRole === 'Admin') {
+          const parts = roomId.split('_');
+          if (parts.length > 2) {
+            receiverId = parts[2]; // patientId
+          }
+          if (parts.length > 3) {
+            selectedSpecialization = parts[3];
           }
         }
-
-        // Send system alert back if no doctor assigned at all
-        if (!assignedDoctorId) {
-           io.to(roomId).emit('receive-message', {
-             _id: Date.now().toString(),
-             senderId: 'system',
-             content: `⚠️ No doctor is currently available to handle this request. Please try again later.`,
-             roomId
-           });
-           return;
-        }
-
-        receiverId = assignedDoctorId; // Route specifically to this doctor
       }
 
       if (senderId && receiverId && content && roomId) {
@@ -161,16 +155,18 @@ io.on('connection', (socket) => {
           content, 
           roomId,
           detectedSpecialization: selectedSpecialization || null,
-          assignedDoctorId: isSubscriptionChat && senderRole === 'Patient' ? assignedDoctorId : (senderRole === 'Doctor' ? senderId : null),
           isSubscriptionChat
         });
         await newMessage.save();
         console.log(`[Socket] Message saved to DB: ${content.substring(0, 30)}...`);
 
-        // If it's a subscription chat, we also need to explicitly push this to the assigned doctor's personal room
-        // so their UI updates even if they haven't "clicked" the room yet.
-        if (isSubscriptionChat && senderRole === 'Patient' && assignedDoctorId) {
-           socket.to(assignedDoctorId.toString()).emit('receive-message', data);
+        // If it's a subscription chat, also emit to the receiver's personal room to notify them in real-time
+        if (isSubscriptionChat && receiverId) {
+          socket.to(receiverId.toString()).emit('receive-message', {
+            ...data,
+            _id: newMessage._id,
+            timestamp: newMessage.timestamp
+          });
         }
       }
     } catch (err) {

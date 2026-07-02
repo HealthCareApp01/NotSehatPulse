@@ -164,14 +164,16 @@ const DashboardLayout = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    if (user && user.role === 'Patient') {
+    if (user) {
       const socket = io('http://localhost:5000');
       socket.emit('join-user-room', user.id || user._id);
       
-      socket.on('incoming-call', (data) => {
-        setIncomingCall(data);
-        setCallTimer(600);
-      });
+      if (user.role === 'Patient') {
+        socket.on('incoming-call', (data) => {
+          setIncomingCall(data);
+          setCallTimer(600);
+        });
+      }
 
       return () => socket.disconnect();
     }
@@ -236,7 +238,9 @@ const DashboardLayout = ({ children }) => {
       { icon: <MessageSquare size={24} />, label: 'Consultations', path: '/chat?filter=appointment' },
       { icon: <Sparkles size={24} />, label: 'Subscribed Chat', path: '/chat?filter=subscription', highlight: true },
       { icon: <PlusCircle size={24} />, label: 'AI Checker', path: '/ai-symptom-checker' },
-    ] : [])
+    ] : [
+      { icon: <Sparkles size={24} />, label: 'Subscribed Chats', path: '/chat?filter=subscription', highlight: true },
+    ])
   ] : [
     { icon: <Stethoscope size={24} />, label: 'Doctors', path: '/find-doctors' },
     { icon: <Pill size={24} />, label: 'Pharmacy', path: '/pharmacy' },
