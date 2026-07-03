@@ -68,7 +68,15 @@ const VideoConsultation = () => {
           socketRef.current.emit('patient-joined', { roomId });
         }
 
-        const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        const configuration = { 
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' }
+          ] 
+        };
         const peerConnection = new RTCPeerConnection(configuration);
         peerConnectionRef.current = peerConnection;
 
