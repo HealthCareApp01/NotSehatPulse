@@ -102,7 +102,7 @@ const Labs = () => {
       }
 
       const response = await axios.post(
-        'http://localhost:5000/api/orders/pay/create-order',
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/orders/pay/create-order`,
         {},
         {
           headers: {

@@ -1,8 +1,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const MEDICINES_URL = 'http://localhost:5000/api/medicines';
-const LAB_TESTS_URL = 'http://localhost:5000/api/lab-tests';
+const MEDICINES_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/medicines`;
+const LAB_TESTS_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/lab-tests`;
 
 export const fetchMedicines = createAsyncThunk('products/fetchMedicines', async (search = '', { rejectWithValue }) => {
   try {

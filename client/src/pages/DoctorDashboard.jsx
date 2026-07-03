@@ -67,10 +67,10 @@ const DoctorDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         const [profileRes, apptsRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/profile/me', {
+          axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profile/me`, {
             headers: { Authorization: `Bearer ${token}` }
           }),
-          axios.get('http://localhost:5000/api/appointments/my', {
+          axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/appointments/my`, {
             headers: { Authorization: `Bearer ${token}` }
           })
         ]);
@@ -149,7 +149,7 @@ const DoctorDashboard = () => {
 
   const markAsConsulted = async (apptId) => {
     try {
-      await axios.post(`http://localhost:5000/api/appointments/${apptId}/consulted`, {}, {
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/appointments/${apptId}/consulted`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Update local state to reflect the change
@@ -325,7 +325,7 @@ const DoctorDashboard = () => {
                             reader.readAsDataURL(file);
                             reader.onloadend = async () => {
                               try {
-                                const res = await axios.put('http://localhost:5000/api/profile/picture', { image: reader.result }, {
+                                const res = await axios.put(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profile/picture`, { image: reader.result }, {
                                   headers: { Authorization: `Bearer ${token}` }
                                 });
                                 if (res.data.success) {
@@ -416,7 +416,7 @@ const DoctorDashboard = () => {
                     setSavingSettings(true);
                     setSettingsSuccess(false);
                     try {
-                      const res = await axios.put('http://localhost:5000/api/profile/me', profile, {
+                      const res = await axios.put(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profile/me`, profile, {
                         headers: { Authorization: `Bearer ${token}` }
                       });
                       if (res.data.success) {

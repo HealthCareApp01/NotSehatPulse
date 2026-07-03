@@ -58,7 +58,7 @@ const AISymptomChecker = () => {
   useEffect(() => {
     const loadChatHistory = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/chatbot/history', {
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/chatbot/history`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -234,7 +234,7 @@ const AISymptomChecker = () => {
         content: encryptMessage(m.content, chatKey) 
       }));
 
-      const response = await fetch('http://localhost:5000/api/chatbot/message', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/chatbot/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -476,7 +476,7 @@ const AISymptomChecker = () => {
         content: encryptMessage(m.content, chatKey) 
       }));
 
-      const response = await fetch('http://localhost:5000/api/chatbot/message', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/chatbot/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

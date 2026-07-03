@@ -92,7 +92,7 @@ const ChatAndConsult = () => {
 
   // 1. Initialize Socket.io Connection
   useEffect(() => {
-    socketRef.current = io('http://localhost:5000');
+    socketRef.current = io((import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}`));
 
     socketRef.current.on('receive-message', (data) => {
       const currentActiveRoom = activeRoomRef.current;
@@ -145,7 +145,7 @@ const ChatAndConsult = () => {
   // 2. Fetch Chat Rooms / Active Contacts
   const fetchChatRooms = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/chat/rooms', {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/chat/rooms`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.success) {
@@ -235,7 +235,7 @@ const ChatAndConsult = () => {
       const fetchMessages = async () => {
         setLoadingMessages(true);
         try {
-          const response = await axios.get(`http://localhost:5000/api/chat/messages/${activeRoom.roomId}`, {
+          const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/chat/messages/${activeRoom.roomId}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (response.data.success) {

@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { clearCartLocal } from './cartSlice';
 
-const API_URL = 'http://localhost:5000/api/appointments';
+const API_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/appointments`;
 
 // Helper to get token from state
 const getAuthConfig = (getState) => {

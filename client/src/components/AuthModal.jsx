@@ -51,7 +51,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
 
       dispatch(loginStart());
       try {
-        const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
+        const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/auth/login`, { email, password });
         if (res.data.success) {
           dispatch(loginSuccess({ user: res.data.data.user, token: res.data.data.token }));
           if (onSuccess) onSuccess();
@@ -72,7 +72,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
 
       dispatch(loginStart());
       try {
-        const res = await axios.post('http://localhost:5000/api/auth/signup', { name, email, password, role });
+        const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/auth/signup`, { name, email, password, role });
         if (res.data.success) {
           dispatch(loginSuccess({ user: res.data.data.user, token: res.data.data.token }));
           if (onSuccess) onSuccess();

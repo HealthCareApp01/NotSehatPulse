@@ -117,7 +117,7 @@ const FindDoctors = () => {
   useEffect(() => {
     const checkSub = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/subscriptions/check/active', {
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/subscriptions/check/active`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (response.data.success && response.data.hasActiveSubscription) {
@@ -150,7 +150,7 @@ const FindDoctors = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.get('http://localhost:5000/api/profile/doctors', {
+      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profile/doctors`, {
         params: { search: queryStr },
         headers: {
           Authorization: `Bearer ${token}`
@@ -218,7 +218,7 @@ const FindDoctors = () => {
       }
 
       const response = await axios.post(
-        'http://localhost:5000/api/appointments/pay/create-order',
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/appointments/pay/create-order`,
         { doctorId: activeDoctor.userId?._id },
         {
           headers: {
@@ -249,7 +249,7 @@ const FindDoctors = () => {
               razorpay_signature: paymentResponse.razorpay_signature
             })).unwrap();
             
-            const socket = window.socketRef || io('http://localhost:5000');
+            const socket = window.socketRef || io((import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}`));
             socket.emit('new-appointment', activeDoctor.userId?._id);
             
           } catch (err) {
@@ -310,7 +310,7 @@ const FindDoctors = () => {
       }
 
       const response = await axios.post(
-        'http://localhost:5000/api/subscriptions/pay/create-order',
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/subscriptions/pay/create-order`,
         {},
         {
           headers: {
@@ -333,7 +333,7 @@ const FindDoctors = () => {
           try {
             setPaymentLoading(true);
             const subRes = await axios.post(
-              'http://localhost:5000/api/subscriptions/subscribe',
+              `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/subscriptions/subscribe`,
               {
                 razorpay_order_id: paymentResponse.razorpay_order_id,
                 razorpay_payment_id: paymentResponse.razorpay_payment_id,

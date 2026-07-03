@@ -53,7 +53,7 @@ const Login = () => {
 
       dispatch(loginStart());
       try {
-        const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
+        const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/auth/login`, { email, password });
         if (res.data.success) {
           dispatch(loginSuccess({ user: res.data.data.user, token: res.data.data.token }));
           if (res.data.data.user.role === 'Admin') navigate('/admin-dashboard', { replace: true });
@@ -76,7 +76,7 @@ const Login = () => {
 
       dispatch(loginStart());
       try {
-        const res = await axios.post('http://localhost:5000/api/auth/signup', { name, email, password, role });
+        const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/auth/signup`, { name, email, password, role });
         if (res.data.success) {
           dispatch(loginSuccess({ user: res.data.data.user, token: res.data.data.token }));
           if (role === 'Doctor') navigate('/doctor-dashboard', { replace: true });
@@ -104,7 +104,7 @@ const Login = () => {
       };
 
       dispatch(loginStart());
-      const res = await axios.post('http://localhost:5000/api/auth/google-login', payload);
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/auth/google-login`, payload);
       
       if (res.data.requireRole) {
         dispatch(loginFailure(null)); // Stop loading spinner

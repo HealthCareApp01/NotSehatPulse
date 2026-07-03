@@ -46,7 +46,7 @@ const VideoConsultation = () => {
 
   useEffect(() => {
     let isMounted = true;
-    socketRef.current = io('http://localhost:5000');
+    socketRef.current = io((import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}`));
     
     const initCall = async () => {
       try {

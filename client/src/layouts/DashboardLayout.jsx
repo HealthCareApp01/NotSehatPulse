@@ -70,7 +70,7 @@ const DashboardLayout = ({ children }) => {
   React.useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/profile/me', {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profile/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const resData = await response.json();
@@ -168,7 +168,7 @@ const DashboardLayout = ({ children }) => {
 
   useEffect(() => {
     if (user) {
-      const socket = io('http://localhost:5000');
+      const socket = io((import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}`));
       socket.emit('join-user-room', user.id || user._id);
       
       if (user.role === 'Patient') {
@@ -267,7 +267,7 @@ const DashboardLayout = ({ children }) => {
             </div>
             <div className="flex gap-4">
               <button onClick={() => {
-                const socket = io('http://localhost:5000');
+                const socket = io((import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}`));
                 socket.emit('call-declined', { roomId: incomingCall.roomId });
                 setIncomingCall(null);
                 setTimeout(() => socket.disconnect(), 500);
@@ -360,7 +360,7 @@ const DashboardLayout = ({ children }) => {
                         reader.readAsDataURL(file);
                         reader.onloadend = async () => {
                           try {
-                            const res = await fetch('http://localhost:5000/api/profile/picture', {
+                            const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profile/picture`, {
                               method: 'PUT',
                               headers: {
                                 'Content-Type': 'application/json',
@@ -391,7 +391,7 @@ const DashboardLayout = ({ children }) => {
               e.preventDefault();
               setSavingIntake(true);
               try {
-                const response = await fetch('http://localhost:5000/api/profile/me', {
+                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profile/me`, {
                   method: 'PUT',
                   headers: {
                     'Content-Type': 'application/json',
@@ -538,7 +538,7 @@ const DashboardLayout = ({ children }) => {
                       reader.readAsDataURL(file);
                       reader.onloadend = async () => {
                         try {
-                          const res = await fetch('http://localhost:5000/api/profile/picture', {
+                          const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profile/picture`, {
                             method: 'PUT',
                             headers: {
                               'Content-Type': 'application/json',
@@ -568,7 +568,7 @@ const DashboardLayout = ({ children }) => {
               e.preventDefault();
               setSavingIntake(true);
               try {
-                const response = await fetch('http://localhost:5000/api/profile/me', {
+                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profile/me`, {
                   method: 'PUT',
                   headers: {
                     'Content-Type': 'application/json',

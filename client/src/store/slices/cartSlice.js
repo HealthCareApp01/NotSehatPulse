@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { handleTokenExpired } from './authSlice';
 
-const API_URL = 'http://localhost:5000/api/cart';
+const API_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/cart`;
 
 // Helper to get token from state
 const getAuthConfig = (getState) => {
@@ -45,7 +45,7 @@ export const addToCart = createAsyncThunk('cart/addToCart', async ({ productId, 
 
 export const placeOrder = createAsyncThunk('cart/placeOrder', async (orderData, { getState, dispatch, rejectWithValue }) => {
   try {
-    const response = await axios.post('http://localhost:5000/api/orders', orderData, getAuthConfig(getState));
+    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/orders`, orderData, getAuthConfig(getState));
     return response.data.data;
   } catch (error) {
     handleAuthError(error, dispatch);

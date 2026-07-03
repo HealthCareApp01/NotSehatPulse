@@ -31,7 +31,7 @@ const Appointment = () => {
 
     if (user && user.role === 'Doctor') {
       import('socket.io-client').then(({ io }) => {
-        const socket = io('http://localhost:5000');
+        const socket = io((import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}`));
         socket.emit('join-user-room', user.id || user._id);
         
         socket.on('new-appointment-booked', () => {
