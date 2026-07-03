@@ -169,22 +169,22 @@ const DoctorDashboard = () => {
   return (
     <div className="space-y-10">
       {/* Dashboard Top Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
-          <h1 className="text-4xl font-black text-text">Welcome back, {user?.name || 'Doctor'}!</h1>
-          <p className="text-slate-500 mt-2">Manage your patients, billing, and direct chat subscriptions.</p>
+          <h1 className="text-2xl sm:text-4xl font-black text-text">Welcome back, {user?.name || 'Doctor'}!</h1>
+          <p className="text-slate-505 sm:text-slate-500 mt-1 sm:mt-2 text-sm sm:text-base">Manage your patients, billing, and direct chat subscriptions.</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className="bg-white border-2 border-secondary px-6 py-4 rounded-2xl font-bold flex items-center gap-2 hover:border-primary transition-all cursor-pointer"
+            className="w-full sm:w-auto justify-center bg-white border-2 border-secondary px-5 py-3 sm:px-6 sm:py-4 rounded-2xl font-bold flex items-center gap-2 hover:border-primary transition-all cursor-pointer text-sm sm:text-base"
           >
-            <Settings size={20} className="text-primary animate-spin-slow" />
+            <Settings size={18} className="text-primary animate-spin-slow" />
             Edit Profile & Rates
           </button>
           <button
             onClick={() => navigate('/chat')}
-            className="bg-primary text-white px-8 py-4 rounded-2xl font-bold medical-gradient shadow-xl shadow-primary/20 transform hover:-translate-y-1 transition-all cursor-pointer"
+            className="w-full sm:w-auto justify-center bg-primary text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold medical-gradient shadow-xl shadow-primary/20 transform hover:-translate-y-0.5 transition-all cursor-pointer text-sm sm:text-base"
           >
             Go to Chats
           </button>

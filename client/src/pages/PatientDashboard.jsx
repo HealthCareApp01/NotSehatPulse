@@ -49,15 +49,15 @@ const PatientDashboard = () => {
 
   return (
     <div className="space-y-10">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-black text-text">Good Morning, {user?.name?.split(' ')[0] || 'Patient'}!</h1>
-          <p className="text-slate-500 mt-2">How are you feeling today?</p>
+          <h1 className="text-2xl sm:text-4xl font-black text-text">Good Morning, {user?.name?.split(' ')[0] || 'Patient'}!</h1>
+          <p className="text-slate-505 sm:text-slate-500 mt-1 sm:mt-2 text-sm sm:text-base">How are you feeling today?</p>
         </div>
-        <div className="flex gap-4">
+        <div className="w-full sm:w-auto">
           <button
             onClick={() => navigate('/find-doctors')}
-            className="bg-primary text-white px-8 py-4 rounded-2xl font-bold medical-gradient shadow-xl shadow-primary/20 transform hover:-translate-y-1 transition-all"
+            className="w-full sm:w-auto bg-primary text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold medical-gradient shadow-xl shadow-primary/20 transform hover:-translate-y-0.5 transition-all text-sm sm:text-base"
           >
             Book Appointment
           </button>
@@ -68,18 +68,18 @@ const PatientDashboard = () => {
         {/* Main Section */}
         <div className="lg:col-span-2 space-y-10">
           {/* Quick Actions / AI Entry */}
-          <div className="bg-text text-white p-10 rounded-[40px] relative overflow-hidden group">
+          <div className="bg-text text-white p-6 sm:p-10 rounded-3xl sm:rounded-[40px] relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary opacity-20 blur-[100px] -translate-y-1/2 translate-x-1/2" />
             <div className="relative z-10 max-w-lg">
-              <h2 className="text-3xl font-black mb-4">Feeling Unwell?</h2>
-              <p className="text-white/60 mb-8 leading-relaxed">
+              <h2 className="text-2xl sm:text-3xl font-black mb-4">Feeling Unwell?</h2>
+              <p className="text-white/60 mb-6 sm:mb-8 leading-relaxed text-sm sm:text-base">
                 Describe your symptoms to our <span className="text-primary font-bold">AI Health Assistant</span> and get recommendations for the right specialists.
               </p>
               <button
                 onClick={() => navigate('/ai-symptom-checker')}
-                className="bg-primary text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 hover:bg-primary-dark transition-all"
+                className="w-full sm:w-auto justify-center bg-primary text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-bold flex items-center gap-2 hover:bg-primary-dark transition-all text-sm sm:text-base"
               >
-                Start AI Checkup <ArrowRight size={20} />
+                Start AI Checkup <ArrowRight size={18} />
               </button>
             </div>
             <div className="absolute bottom-10 right-10 scale-150 opacity-20 transform rotate-12 group-hover:rotate-0 transition-transform hidden md:block">

@@ -67,6 +67,8 @@ app.get('/', (req, res) => {
   res.json({ success: true, message: "Healthcare API is running..." });
 });
 
+const onlineUsers = new Map();
+
 // Socket.io Signaling & Chat
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
@@ -95,7 +97,25 @@ io.on('connection', (socket) => {
   // WebRTC Consultation Queue Signaling
   socket.on('join-user-room', (userId) => {
     socket.join(userId);
+    socket.userId = userId;
+    if (!onlineUsers.has(userId)) {
+      onlineUsers.set(userId, new Set());
+    }
+    onlineUsers.get(userId).add(socket.id);
+    io.emit('user-status-change', { userId, status: 'online' });
     console.log(`[Socket] User ${userId} joined their personal room`);
+  });
+
+  socket.on('check-online-users', (userIds, callback) => {
+    const statuses = {};
+    if (Array.isArray(userIds)) {
+      userIds.forEach(id => {
+        statuses[id] = onlineUsers.has(id);
+      });
+    }
+    if (typeof callback === 'function') {
+      callback(statuses);
+    }
   });
 
   socket.on('doctor-calling', (data) => {
@@ -181,6 +201,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    if (socket.userId && onlineUsers.has(socket.userId)) {
+      const userSockets = onlineUsers.get(socket.userId);
+      userSockets.delete(socket.id);
+      if (userSockets.size === 0) {
+        onlineUsers.delete(socket.userId);
+        io.emit('user-status-change', { userId: socket.userId, status: 'offline' });
+        console.log(`[Socket] User ${socket.userId} offline`);
+      }
+    }
     console.log('User disconnected:', socket.id);
   });
 });

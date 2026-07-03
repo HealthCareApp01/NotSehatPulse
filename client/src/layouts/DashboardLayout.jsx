@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   Calendar,
   MessageSquare,
   LogOut,
   Search,
-  PlusCircle,
+  Bot,
   Stethoscope,
   Pill,
   FlaskConical,
@@ -14,7 +14,9 @@ import {
   Video,
   Sun,
   Moon,
-  Sparkles
+  Sparkles,
+  Menu,
+  X
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -63,6 +65,7 @@ const DashboardLayout = ({ children }) => {
     specialization: '',
     consultationFee: ''
   });
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   React.useEffect(() => {
     const fetchProfile = async () => {
@@ -237,7 +240,7 @@ const DashboardLayout = ({ children }) => {
       { icon: <Calendar size={24} />, label: 'Appointments', path: '/appointments' },
       { icon: <MessageSquare size={24} />, label: 'Consultations', path: '/chat?filter=appointment' },
       { icon: <Sparkles size={24} />, label: 'Subscribed Chat', path: '/chat?filter=subscription', highlight: true },
-      { icon: <PlusCircle size={24} />, label: 'AI Checker', path: '/ai-symptom-checker' },
+      {icon: <Bot size={24} />, label: 'AI Checker', path: '/ai-symptom-checker'},
     ] : [
       { icon: <Sparkles size={24} />, label: 'Subscribed Chats', path: '/chat?filter=subscription', highlight: true },
     ])
@@ -643,8 +646,8 @@ const DashboardLayout = ({ children }) => {
         </div>
       )}
 
-      {/* Sidebar */}
-      <aside className="w-24 bg-white border-r border-secondary flex flex-col items-center py-8 gap-8">
+      {/* Sidebar (Desktop only) */}
+      <aside className="hidden md:flex w-24 bg-white border-r border-secondary flex-col items-center py-8 gap-8">
         <button
           onClick={() => navigate('/')}
           className="w-12 h-12 bg-white rounded-2xl flex-shrink-0 flex items-center justify-center border border-secondary shadow-sm hover:scale-105 transition-all overflow-hidden"
@@ -701,29 +704,126 @@ const DashboardLayout = ({ children }) => {
         </div>
       </aside>
 
+      {/* Mobile Drawer Sidebar */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-[90] md:hidden">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+            />
+            {/* Drawer */}
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="absolute top-0 bottom-0 left-0 w-72 bg-white flex flex-col py-6 px-4 gap-6 shadow-2xl border-r border-secondary"
+            >
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between border-b border-secondary pb-4">
+                <div className="flex items-center gap-2">
+                  <img src="https://res.cloudinary.com/uwv2e0xt/image/upload/v1782896157/healthcare_assets/blqjvr5f2jt2juacc1ii.jpg" alt="Logo" className="w-8 h-8 object-cover rounded-xl" />
+                  <span className="text-xl font-black bg-gradient-to-r from-primary-dark to-primary bg-clip-text text-transparent">heAlthI</span>
+                </div>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 text-slate-400 hover:text-text hover:bg-secondary rounded-xl transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Drawer Links */}
+              <nav className="flex-1 flex flex-col gap-2 overflow-y-auto no-scrollbar">
+                {sidebarItems.map((item, index) => {
+                  const [basePath, queryStr] = item.path.split('?');
+                  const isActive = location.pathname === basePath && (queryStr ? location.search.includes(queryStr) : true);
+                  return (
+                    <Link key={index} to={item.path} onClick={() => setIsMobileMenuOpen(false)}>
+                      <div
+                        className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold transition-all ${
+                          isActive 
+                            ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                            : item.highlight 
+                              ? 'bg-amber-50 text-amber-500 hover:bg-amber-100 border border-amber-200/50' 
+                              : 'text-slate-505 hover:text-primary hover:bg-secondary'
+                        }`}
+                      >
+                        {item.icon}
+                        <span className="text-sm">{item.label}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* Drawer Footer */}
+              <div className="border-t border-secondary pt-4 flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    toggleDarkMode();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center gap-4 px-4 py-3 rounded-2xl font-bold text-slate-500 hover:bg-secondary transition-all text-left"
+                >
+                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                  <span className="text-sm">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                </button>
+                {isAuthenticated && (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setShowLogoutConfirm(true);
+                    }}
+                    className="flex items-center gap-4 px-4 py-3 rounded-2xl font-bold text-rose-500 hover:bg-rose-50 transition-all text-left"
+                  >
+                    <LogOut size={20} />
+                    <span className="text-sm">Logout</span>
+                  </button>
+                )}
+              </div>
+            </motion.aside>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-20 bg-white border-b border-secondary flex items-center justify-between px-10">
-          {!['/patient-dashboard', '/doctor-dashboard', '/admin-dashboard'].includes(location.pathname) && (
-            <div className="flex items-center gap-4 bg-secondary/50 px-6 py-2.5 rounded-2xl w-96 border border-transparent focus-within:border-primary focus-within:bg-white transition-all">
-              <Search size={20} className="text-slate-400" />
-              <input
-                type="text"
-                placeholder={getSearchPlaceholder()}
-                value={searchTerm}
-                onChange={handleSearch}
-                className="bg-transparent outline-none w-full font-medium text-slate-600"
-              />
-            </div>
-          )}
-          <div className="flex items-center gap-6">
-            {/* Dark Mode Toggle in Header */}
+        <header className="h-20 bg-white border-b border-secondary flex items-center justify-between px-4 md:px-10 gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden p-2 text-slate-600 hover:text-primary hover:bg-secondary rounded-xl transition-all"
+              title="Open Menu"
+            >
+              <Menu size={24} />
+            </button>
+            {!['/patient-dashboard', '/doctor-dashboard', '/admin-dashboard'].includes(location.pathname) && (
+              <div className="flex items-center gap-2 md:gap-4 bg-secondary/50 px-3 md:px-6 py-2 rounded-2xl w-full max-w-[160px] sm:max-w-xs md:w-96 border border-transparent focus-within:border-primary focus-within:bg-white transition-all">
+                <Search size={18} className="text-slate-400 flex-shrink-0" />
+                <input
+                  type="text"
+                  placeholder={getSearchPlaceholder()}
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  className="bg-transparent outline-none w-full font-medium text-slate-600 text-xs md:text-sm"
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-3 md:gap-6">
+            {/* Dark Mode Toggle in Header (Hidden on small screens since it's in drawer, but visible on md+) */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={toggleDarkMode}
-              className="theme-toggle-btn w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-primary hover:bg-secondary transition-all border border-transparent hover:border-secondary"
+              className="hidden md:flex theme-toggle-btn w-10 h-10 rounded-xl items-center justify-center text-slate-400 hover:text-primary hover:bg-secondary transition-all border border-transparent hover:border-secondary"
               title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
             >
               <motion.div
@@ -737,29 +837,29 @@ const DashboardLayout = ({ children }) => {
             </motion.button>
             {isAuthenticated ? (
               <>
-                <div className="text-right">
-                  <span className="block font-bold text-text">{user?.name || 'User'}</span>
-                  <span className="text-xs font-bold text-primary uppercase tracking-wider">{user?.role || 'Patient'}</span>
+                <div className="text-right hidden sm:block">
+                  <span className="block font-bold text-text text-sm md:text-base">{user?.name || 'User'}</span>
+                  <span className="text-[10px] md:text-xs font-bold text-primary uppercase tracking-wider">{user?.role || 'Patient'}</span>
                 </div>
                 <button 
                   onClick={() => {
                     if (user?.role === 'Doctor') setShowDoctorIntake(true);
                     else if (user?.role === 'Patient') setShowIntakeForm(true);
                   }}
-                  className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-primary flex items-center justify-center bg-secondary cursor-pointer hover:shadow-lg hover:shadow-primary/20 transition-all group"
+                  className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl overflow-hidden border-2 border-primary flex items-center justify-center bg-secondary cursor-pointer hover:shadow-lg hover:shadow-primary/20 transition-all group"
                   title="Edit Medical Profile"
                 >
                   {user?.profilePicture ? (
                     <img src={user.profilePicture} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-primary font-bold group-hover:scale-110 transition-transform">{user?.name?.charAt(0) || 'U'}</span>
+                    <span className="text-primary font-bold group-hover:scale-110 transition-transform text-sm md:text-base">{user?.name?.charAt(0) || 'U'}</span>
                   )}
                 </button>
               </>
             ) : (
               <button
                 onClick={() => navigate('/login')}
-                className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all cursor-pointer"
+                className="bg-primary text-white px-4 py-2 md:px-6 md:py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all cursor-pointer text-xs md:text-sm"
               >
                 Login / Sign up
               </button>
@@ -768,7 +868,7 @@ const DashboardLayout = ({ children }) => {
         </header>
 
         {/* Scrollable Area */}
-        <div className="flex-1 overflow-y-auto p-10">
+        <div className="flex-1 overflow-y-auto p-4 md:p-10">
           {children}
         </div>
       </main>

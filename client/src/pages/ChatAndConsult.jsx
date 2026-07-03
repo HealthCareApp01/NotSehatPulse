@@ -33,7 +33,7 @@ const ChatAndConsult = () => {
 
   const [chatRooms, setChatRooms] = useState([]);
   const [activeRoom, setActiveRoom] = useState(null);
-  const [showProfile, setShowProfile] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [loadingRooms, setLoadingRooms] = useState(true);
@@ -43,6 +43,8 @@ const ChatAndConsult = () => {
   const [selectedSpecialization, setSelectedSpecialization] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState({});
+  const [mobileView, setMobileView] = useState('list'); // 'list', 'chat', 'profile'
+  const [onlineStatuses, setOnlineStatuses] = useState({});
 
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -67,6 +69,26 @@ const ChatAndConsult = () => {
   }, [activeRoom]);
 
   const role = user?.role?.toLowerCase() || 'patient';
+  const assignedDoctor = (() => {
+    if (activeRoom && activeRoom.type === 'Subscription' && role === 'patient') {
+      const lastDocMsg = [...messages].reverse().find(m => m.assignedDoctorId?._id);
+      if (lastDocMsg?.assignedDoctorId) {
+        return lastDocMsg.assignedDoctorId;
+      }
+    }
+    return null;
+  })();
+  const activePartnerId = assignedDoctor?._id || activeRoom?.partner?._id;
+  const displayDoctor = assignedDoctor || activeRoom?.partner;
+
+  const showDoctorLayout = activeRoom ? (() => {
+    if (activeRoom.partner?.role === 'System') return true;
+    if (user?.role === 'Doctor' && activeRoom.partner?.role === 'Doctor') {
+      const isUserTheDoctor = activeRoom.roomId?.endsWith(`_${user.id || user._id}`);
+      return !isUserTheDoctor;
+    }
+    return activeRoom.partner?.role === 'Doctor';
+  })() : false;
 
   // 1. Initialize Socket.io Connection
   useEffect(() => {
@@ -106,6 +128,13 @@ const ChatAndConsult = () => {
       fetchChatRooms();
     });
 
+    socketRef.current.on('user-status-change', ({ userId, status }) => {
+      setOnlineStatuses(prev => ({
+        ...prev,
+        [userId]: status === 'online'
+      }));
+    });
+
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -121,6 +150,18 @@ const ChatAndConsult = () => {
       });
       if (response.data.success) {
         setChatRooms(response.data.data);
+
+        const partnerIds = response.data.data
+          .map(r => r.partner?._id)
+          .filter(id => id && id !== 'system_health_chat');
+        if (partnerIds.length > 0 && socketRef.current) {
+          socketRef.current.emit('check-online-users', partnerIds, (statuses) => {
+            setOnlineStatuses(prev => ({
+              ...prev,
+              ...statuses
+            }));
+          });
+        }
 
         const currentFilterType = filterTypeRef.current;
         const availableRooms = currentFilterType 
@@ -167,6 +208,22 @@ const ChatAndConsult = () => {
       fetchChatRooms();
     }
   }, [token, filterType]); // Refetch and re-evaluate when filter changes
+
+  useEffect(() => {
+    if (socketRef.current && chatRooms.length > 0) {
+      const partnerIds = chatRooms
+        .map(r => r.partner?._id)
+        .filter(id => id && id !== 'system_health_chat');
+      if (partnerIds.length > 0) {
+        socketRef.current.emit('check-online-users', partnerIds, (statuses) => {
+          setOnlineStatuses(prev => ({
+            ...prev,
+            ...statuses
+          }));
+        });
+      }
+    }
+  }, [chatRooms, socketRef.current]);
 
   // 3. Join Socket Room and Load Messages on selecting a chat room
   useEffect(() => {
@@ -264,9 +321,9 @@ const ChatAndConsult = () => {
     });
 
   return (
-    <div className="h-full flex gap-6 overflow-hidden">
+    <div className="h-full flex flex-col lg:flex-row gap-4 lg:gap-6 overflow-hidden">
       {/* Sidebar: Chat Channels List */}
-      <div className="w-80 bg-white border border-secondary rounded-[40px] flex flex-col overflow-hidden">
+      <div className={`w-full lg:w-80 bg-white border border-secondary rounded-3xl lg:rounded-[40px] flex flex-col overflow-hidden ${mobileView === 'list' ? 'flex h-full' : 'hidden lg:flex'}`}>
         <div className="p-6 border-b border-secondary">
           {filterType === 'subscription' && role === 'patient' ? (
             <div className="relative">
@@ -299,6 +356,7 @@ const ChatAndConsult = () => {
                           const existing = chatRooms.find(r => r.roomId === targetRoomId);
                           if (existing) {
                             setActiveRoom(existing);
+                            setMobileView('chat');
                           } else {
                             setActiveRoom({
                               roomId: targetRoomId,
@@ -312,6 +370,7 @@ const ChatAndConsult = () => {
                               },
                               specialization: spec
                             });
+                            setMobileView('chat');
                           }
                         }}
                         className="px-5 py-3 hover:bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 transition-colors flex items-center gap-2 border-b border-slate-50 last:border-0"
@@ -375,7 +434,7 @@ const ChatAndConsult = () => {
               return (
                 <div 
                   key={room.roomId} 
-                  onClick={() => setActiveRoom(room)}
+                  onClick={() => { setActiveRoom(room); setMobileView('chat'); }}
                   className={`p-5 flex items-center gap-4 cursor-pointer hover:bg-secondary/20 transition-all ${
                     isActive ? 'border-l-4 border-primary bg-primary/5' : ''
                   }`}
@@ -386,6 +445,9 @@ const ChatAndConsult = () => {
                       <span className="absolute -top-1 -right-1 bg-yellow-400 text-white rounded-full p-0.5" title="Subscribed Chat">
                         <Sparkles size={10} />
                       </span>
+                    )}
+                    {(onlineStatuses[room.partner?._id] || room.partner?._id === 'system_health_chat') && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" title="Online" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -421,36 +483,53 @@ const ChatAndConsult = () => {
       </div>
 
       {/* Main Container: Selected Chat Room or Placeholder */}
-      <div className="flex-1 flex flex-col bg-white border border-secondary rounded-[40px] overflow-hidden">
+      <div className={`flex-1 bg-white border border-secondary rounded-3xl lg:rounded-[40px] overflow-hidden ${mobileView === 'chat' ? 'flex flex-col h-full' : 'hidden lg:flex flex-col'}`}>
         {activeRoom ? (
             <>
               {/* Room Header */}
-              <div className="p-6 border-b border-secondary flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary font-bold">
+              <div className="p-4 md:p-6 border-b border-secondary flex justify-between items-center gap-2">
+                <div className="flex items-center gap-2 md:gap-4 min-w-0">
+                  <button
+                    onClick={() => setMobileView('list')}
+                    className="lg:hidden p-2 hover:bg-secondary rounded-xl text-slate-600 transition-all"
+                    title="Back to Chats"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                  </button>
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary font-bold flex-shrink-0 text-sm md:text-base">
                     {activeRoom.partner?.name?.replace('Dr. ', '').split(' ').map(n=>n[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-text">{activeRoom.partner?.name}</h3>
-                      {activeRoom.type === 'Subscription' && <Sparkles size={16} className="text-yellow-500 fill-yellow-500" />}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
+                      <h3 className="font-bold text-text text-sm md:text-base truncate">{activeRoom.partner?.name}</h3>
+                      {activeRoom.type === 'Subscription' && <Sparkles size={14} className="text-yellow-500 fill-yellow-500 flex-shrink-0" />}
                       {activeRoom.specialization && (
-                        <span className="text-[10px] bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded-full uppercase ml-2">
+                        <span className="text-[9px] md:text-[10px] bg-amber-100 text-amber-800 font-extrabold px-1.5 md:px-2 py-0.5 rounded-full uppercase truncate">
                           {activeRoom.specialization}
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-green-500 font-bold">• Active Now</span>
+                    {onlineStatuses[activePartnerId] || (activeRoom.partner?._id === 'system_health_chat' && !assignedDoctor) ? (
+                      <span className="text-[10px] md:text-xs text-green-500 font-bold">• Active Now</span>
+                    ) : (
+                      <span className="text-[10px] md:text-xs text-slate-400 font-bold">• Offline</span>
+                    )}
                   </div>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex gap-2">
                   <button 
-                    onClick={() => setShowProfile(!showProfile)}
-                    className={`p-3 rounded-xl transition-all cursor-pointer ${
+                    onClick={() => {
+                      if (window.innerWidth < 1024) {
+                        setMobileView('profile');
+                      } else {
+                        setShowProfile(!showProfile);
+                      }
+                    }}
+                    className={`p-2.5 md:p-3 rounded-xl transition-all cursor-pointer ${
                       showProfile ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-secondary text-primary'
                     }`}
                   >
-                    <FileText size={20} />
+                    <FileText size={18} />
                   </button>
                 </div>
               </div>
@@ -573,44 +652,94 @@ const ChatAndConsult = () => {
 
       {/* Right Sidebar: Profile Context Split-Screen */}
       <AnimatePresence>
-        {activeRoom && showProfile && (
+        {activeRoom && (showProfile || mobileView === 'profile') && (
           <motion.div 
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 450, opacity: 1 }}
+            animate={{ 
+              width: window.innerWidth < 1024 ? '100%' : 450, 
+              opacity: 1 
+            }}
             exit={{ width: 0, opacity: 0 }}
-            className="bg-white border border-secondary rounded-[40px] overflow-hidden flex flex-col"
+            className={`bg-white border border-secondary rounded-3xl lg:rounded-[40px] overflow-hidden flex flex-col ${
+              mobileView === 'profile' ? 'flex h-full w-full' : 'hidden lg:flex'
+            }`}
           >
-            {role === 'Patient' ? (
-              /* Patient viewing Doctor details */
+            {showDoctorLayout ? (
+              /* Viewing Doctor details */
               <>
-                <div className="p-8 border-b border-secondary">
+                <div className="p-6 md:p-8 border-b border-secondary">
                   <div className="flex justify-between items-start mb-6">
-                    <h3 className="text-xl font-bold text-text">Doctor Profile</h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setMobileView('chat')}
+                        className="lg:hidden p-2 hover:bg-secondary rounded-xl text-slate-600 transition-all"
+                        title="Back to Chat"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                      </button>
+                      <h3 className="text-xl font-bold text-text">Doctor Profile</h3>
+                    </div>
                     <button className="text-slate-300 hover:text-text"><MoreVertical size={20} /></button>
                   </div>
                   <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-secondary rounded-[24px] flex items-center justify-center text-primary text-2xl font-black">
-                      {activeRoom.partner?.name?.replace('Dr. ', '').split(' ').map(n=>n[0]).join('').slice(0, 2).toUpperCase()}
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-secondary rounded-xl md:rounded-[24px] flex items-center justify-center text-primary text-xl md:text-2xl font-black">
+                      {displayDoctor?.name?.replace('Dr. ', '').split(' ').map(n=>n[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <h4 className="text-2xl font-black text-text">{activeRoom.partner?.name}</h4>
-                      <span className="text-slate-500 font-bold">{activeRoom.partner?.specialization}</span>
+                      <h4 className="text-lg md:text-2xl font-black text-text leading-tight">{displayDoctor?.name}</h4>
+                      <span className="text-xs md:text-slate-500 font-bold">{displayDoctor?.specialization}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-8 space-y-10">
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 md:space-y-10">
+                  {/* Doctor Stats (Experience, Degree, Fee, Rating) */}
+                  {displayDoctor?.role !== 'System' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-secondary">
+                        <span className="block text-slate-400 text-[10px] font-black uppercase tracking-wider mb-1">Experience</span>
+                        <span className="text-sm font-black text-text">
+                          {displayDoctor?.experience ? `${displayDoctor.experience} Yrs` : '0 Yrs'}
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-secondary">
+                        <span className="block text-slate-400 text-[10px] font-black uppercase tracking-wider mb-1">Degree</span>
+                        <span className="text-sm font-black text-text truncate block" title={displayDoctor?.degree || 'MBBS'}>
+                          {displayDoctor?.degree || 'MBBS'}
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-secondary col-span-2">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="block text-slate-400 text-[10px] font-black uppercase tracking-wider mb-1">Consultation Fee</span>
+                            <span className="text-sm font-bold text-text">
+                              ₹{displayDoctor?.consultationFee || '500'}
+                            </span>
+                          </div>
+                          {displayDoctor?.rating > 0 && (
+                            <div className="text-right">
+                              <span className="block text-slate-400 text-[10px] font-black uppercase tracking-wider mb-1">Rating</span>
+                              <span className="text-sm font-bold text-amber-500 flex items-center gap-1 justify-end">
+                                ★ {displayDoctor.rating.toFixed(1)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div>
-                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Doctor Bio</h4>
-                    <div className="bg-secondary/30 p-6 rounded-3xl border border-primary/10">
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-3 md:mb-4">Doctor Bio</h4>
+                    <div className="bg-secondary/30 p-5 md:p-6 rounded-2xl md:rounded-3xl border border-primary/10">
                       <p className="text-sm text-text font-medium leading-relaxed italic">
-                        "{activeRoom.partner?.bio || 'Experienced specialist dedicated to providing comprehensive and compassionate patient care.'}"
+                        "{displayDoctor?.bio || 'Experienced specialist dedicated to providing comprehensive and compassionate patient care.'}"
                       </p>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Subscription Plan</h4>
+                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-3 md:mb-4">Subscription Plan</h4>
                     <div className="space-y-4">
                       <div className="flex items-center gap-4 bg-white border border-secondary p-4 rounded-2xl">
                         <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
@@ -632,11 +761,20 @@ const ChatAndConsult = () => {
                 </div>
               </>
             ) : (
-              /* Doctor viewing Patient details */
+              /* Viewing Patient details */
               <>
-                <div className="p-8 border-b border-secondary">
+                <div className="p-6 md:p-8 border-b border-secondary">
                   <div className="flex justify-between items-start mb-6">
-                    <h3 className="text-xl font-bold text-text">Patient File</h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setMobileView('chat')}
+                        className="lg:hidden p-2 hover:bg-secondary rounded-xl text-slate-600 transition-all"
+                        title="Back to Chat"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                      </button>
+                      <h3 className="text-xl font-bold text-text">Patient File</h3>
+                    </div>
                     <button className="text-slate-300 hover:text-text"><MoreVertical size={20} /></button>
                   </div>
                   <div className="flex items-center gap-6">
@@ -687,30 +825,6 @@ const ChatAndConsult = () => {
                       <p className="text-sm text-text font-medium leading-relaxed italic">
                         "{activeRoom.partner?.history || 'No recorded history. Standard consultation in progress.'}"
                       </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Past Reports</h4>
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-4 bg-white border border-secondary p-4 rounded-2xl hover:border-primary transition-all cursor-pointer group">
-                        <div className="w-10 h-10 bg-secondary rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                          <FileText size={20} />
-                        </div>
-                        <div className="flex-1">
-                          <span className="block font-bold text-sm text-text">Blood Test Report</span>
-                          <span className="text-[10px] text-slate-400">Sept 12, 2026</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 bg-white border border-secondary p-4 rounded-2xl hover:border-primary transition-all cursor-pointer group">
-                        <div className="w-10 h-10 bg-secondary rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                          <FileText size={20} />
-                        </div>
-                        <div className="flex-1">
-                          <span className="block font-bold text-sm text-text">ECG Scan</span>
-                          <span className="text-[10px] text-slate-400">Aug 24, 2026</span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>

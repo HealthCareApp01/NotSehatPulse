@@ -85,6 +85,8 @@ router.get('/rooms', protect, async (req, res) => {
                 bio: docProfile?.bio || '',
                 experience: docProfile?.experience || 0,
                 consultationFee: docProfile?.consultationFee || 500,
+                degree: docProfile?.degree || 'MBBS',
+                rating: docProfile?.rating || 0,
               },
               type: 'Appointment',
               roomId: roomId
@@ -246,7 +248,7 @@ router.get('/messages/:roomId', protect, async (req, res) => {
     const messages = await Message.find({ roomId })
       .sort({ timestamp: 1 })
       .populate('senderId', 'name email role')
-      .populate('assignedDoctorId', 'name');
+      .populate('assignedDoctorId', 'name email role');
 
     // Attach specialization info to populated assignedDoctorId if present
     const messagesWithSpec = [];
@@ -255,6 +257,11 @@ router.get('/messages/:roomId', protect, async (req, res) => {
       if (msgObj.assignedDoctorId) {
          const docProfile = await DoctorProfile.findOne({ userId: msgObj.assignedDoctorId._id });
          msgObj.assignedDoctorId.specialization = docProfile?.specialization || 'Specialist';
+         msgObj.assignedDoctorId.bio = docProfile?.bio || '';
+         msgObj.assignedDoctorId.experience = docProfile?.experience || 0;
+         msgObj.assignedDoctorId.degree = docProfile?.degree || 'MBBS';
+         msgObj.assignedDoctorId.consultationFee = docProfile?.consultationFee || 500;
+         msgObj.assignedDoctorId.rating = docProfile?.rating || 0;
       }
       messagesWithSpec.push(msgObj);
     }
