@@ -46,7 +46,8 @@ const DoctorDashboard = () => {
     experience: 0,
     consultationFee: 500,
     subscriptionFee: 999,
-    bio: ''
+    bio: '',
+    availability: []
   });
   
   const [appointments, setAppointments] = useState([]);
@@ -61,6 +62,11 @@ const DoctorDashboard = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSuccess, setSettingsSuccess] = useState(false);
+
+  const [showAvailability, setShowAvailability] = useState(false);
+  const [savingAvailability, setSavingAvailability] = useState(false);
+  const [availabilitySuccess, setAvailabilitySuccess] = useState(false);
+  const [localAvailability, setLocalAvailability] = useState([]);
 
   // Fetch Doctor Profile Information and Appointments
   useEffect(() => {
@@ -85,7 +91,8 @@ const DoctorDashboard = () => {
             experience: p.experience || 0,
             consultationFee: fetchedFee,
             subscriptionFee: p.subscriptionFee || 999,
-            bio: p.bio || ''
+            bio: p.bio || '',
+            availability: p.availability || []
           });
         }
 
@@ -140,6 +147,79 @@ const DoctorDashboard = () => {
     }
   }, [token, user]);
 
+  // Generate the next 7 days (including today)
+  const upcoming7Days = React.useMemo(() => {
+    const dates = [];
+    const current = new Date();
+    for (let i = 0; i < 7; i++) {
+      dates.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
+  }, []);
+
+  useEffect(() => {
+    if (showAvailability) {
+      const initialLocal = upcoming7Days.map(dateObj => {
+        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+        const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        
+        // Find existing configuration for this day of the week
+        const existing = (profile.availability || []).find(a => a.day === dayName);
+        
+        const popularSlots = ["10:00 AM - 4:00 PM", "09:00 AM - 01:00 PM", "02:00 PM - 06:00 PM", "06:00 PM - 09:00 PM"];
+        const currentSlot = (existing && existing.slots.length > 0) ? existing.slots[0] : "10:00 AM - 4:00 PM";
+        
+        return {
+          day: dayName,
+          dateStr: dateStr,
+          available: existing ? existing.slots.length > 0 : true,
+          slot: currentSlot,
+          isCustom: !popularSlots.includes(currentSlot)
+        };
+      });
+      setLocalAvailability(initialLocal);
+    }
+  }, [showAvailability, profile.availability, upcoming7Days]);
+
+  const handleSaveAvailability = async () => {
+    setSavingAvailability(true);
+    setAvailabilitySuccess(false);
+    try {
+      const formattedAvailability = localAvailability.map(item => ({
+        day: item.day,
+        slots: item.available ? [item.slot] : []
+      }));
+
+      // Merge/overwrite availability
+      const updatedProfile = {
+        ...profile,
+        availability: formattedAvailability
+      };
+
+      const res = await axios.put(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/profile/me`, updatedProfile, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.data.success) {
+        setProfile(prev => ({
+          ...prev,
+          availability: formattedAvailability
+        }));
+        setAvailabilitySuccess(true);
+        setTimeout(() => {
+          setAvailabilitySuccess(false);
+          setShowAvailability(false);
+        }, 1500);
+      }
+    } catch (err) {
+      console.error('Error saving availability:', err);
+      alert('Failed to save availability settings');
+    } finally {
+      setSavingAvailability(false);
+    }
+  };
+
   const formatCurrency = (value) => {
     if (value >= 100000) {
       return `₹${(value / 100000).toFixed(1)}L`;
@@ -175,6 +255,13 @@ const DoctorDashboard = () => {
           <p className="text-slate-505 sm:text-slate-500 mt-1 sm:mt-2 text-sm sm:text-base">Manage your patients, billing, and direct chat subscriptions.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+          <button
+            onClick={() => setShowAvailability(true)}
+            className="w-full sm:w-auto justify-center bg-white border-2 border-secondary px-5 py-3 sm:px-6 sm:py-4 rounded-2xl font-bold flex items-center gap-2 hover:border-primary transition-all cursor-pointer text-sm sm:text-base"
+          >
+            <Calendar size={18} className="text-primary" />
+            Set Availability
+          </button>
           <button
             onClick={() => setShowSettings(!showSettings)}
             className="w-full sm:w-auto justify-center bg-white border-2 border-secondary px-5 py-3 sm:px-6 sm:py-4 rounded-2xl font-bold flex items-center gap-2 hover:border-primary transition-all cursor-pointer text-sm sm:text-base"
@@ -435,6 +522,124 @@ const DoctorDashboard = () => {
                   {savingSettings ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : 'Save Updates'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Availability Sliding Overlay Drawer */}
+      <AnimatePresence>
+        {showAvailability && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-end p-4 backdrop-blur-sm">
+            <motion.div
+              initial={{ x: '100%', opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="bg-white rounded-l-[40px] max-w-lg w-full h-full p-8 shadow-2xl relative border-l border-secondary overflow-y-auto flex flex-col justify-between"
+            >
+              <div className="space-y-6">
+                <div className="flex justify-between items-center border-b border-secondary pb-4">
+                  <h3 className="text-xl font-bold text-text flex items-center gap-2">
+                    <Calendar className="text-primary" size={24} /> Set Active Hours (7 Days)
+                  </h3>
+                  <button 
+                    onClick={() => setShowAvailability(false)}
+                    className="text-slate-400 hover:text-text font-bold text-sm cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-500 font-medium">
+                  Define your daily consultation slots. This updates availability dynamically for the next 7 days, including today.
+                </p>
+
+                <div className="space-y-4">
+                  {localAvailability.map((item, idx) => (
+                    <div key={idx} className="bg-secondary/20 p-4 rounded-2xl border border-secondary flex flex-col gap-3">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="font-black text-text block text-sm">{item.day}, {item.dateStr}</span>
+                          <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">
+                            {idx === 0 ? "Today" : idx === 1 ? "Tomorrow" : "Upcoming"}
+                          </span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={item.available} 
+                            onChange={(e) => {
+                              const updated = [...localAvailability];
+                              updated[idx].available = e.target.checked;
+                              setLocalAvailability(updated);
+                            }}
+                            className="sr-only peer" 
+                          />
+                          <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                      </div>
+
+                      {item.available && (
+                        <div className="flex gap-2">
+                          <select
+                            value={item.isCustom ? "custom" : item.slot}
+                            onChange={(e) => {
+                              const updated = [...localAvailability];
+                              if (e.target.value === "custom") {
+                                updated[idx].isCustom = true;
+                              } else {
+                                updated[idx].isCustom = false;
+                                updated[idx].slot = e.target.value;
+                              }
+                              setLocalAvailability(updated);
+                            }}
+                            className="bg-white border border-secondary rounded-xl px-3 py-2 text-xs font-bold text-text outline-none flex-1"
+                          >
+                            <option value="10:00 AM - 4:00 PM">10:00 AM - 4:00 PM (Default)</option>
+                            <option value="09:00 AM - 01:00 PM">09:00 AM - 01:00 PM</option>
+                            <option value="02:00 PM - 06:00 PM">02:00 PM - 06:00 PM</option>
+                            <option value="06:00 PM - 09:00 PM">06:00 PM - 09:00 PM</option>
+                            <option value="custom">Custom Time Slot</option>
+                          </select>
+
+                          {(item.isCustom || !["10:00 AM - 4:00 PM", "09:00 AM - 01:00 PM", "02:00 PM - 06:00 PM", "06:00 PM - 09:00 PM"].includes(item.slot)) && (
+                            <input
+                              type="text"
+                              value={item.slot}
+                              onChange={(e) => {
+                                const updated = [...localAvailability];
+                                updated[idx].slot = e.target.value;
+                                setLocalAvailability(updated);
+                              }}
+                              placeholder="e.g. 11:00 AM - 2:00 PM"
+                              className="bg-white border border-secondary focus:border-primary outline-none px-3 py-2 rounded-xl font-bold text-xs text-text flex-1"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-secondary mt-6">
+                {availabilitySuccess && (
+                  <div className="bg-emerald-50 text-emerald-600 border border-emerald-100 p-3 rounded-xl font-bold text-xs text-center animate-pulse">
+                    ✓ Availability schedule updated!
+                  </div>
+                )}
+
+                <button
+                  onClick={handleSaveAvailability}
+                  disabled={savingAvailability}
+                  className="w-full bg-primary disabled:bg-slate-300 text-white py-4 rounded-2xl font-black text-sm transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {savingAvailability ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : 'Save Availability'}
                 </button>
               </div>
             </motion.div>
