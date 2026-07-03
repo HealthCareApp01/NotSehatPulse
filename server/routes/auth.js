@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import DoctorProfile from '../models/DoctorProfile.js';
 import PatientProfile from '../models/PatientProfile.js';
+import admin from '../utils/firebaseAdmin.js';
 
 const router = express.Router();
 
@@ -131,6 +132,98 @@ router.post('/login', async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Google Login Route
+router.post('/google-login', async (req, res) => {
+  try {
+    const { idToken, role = 'Patient' } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ success: false, message: "Firebase ID Token is required" });
+    }
+
+    // 1. Verify token with Firebase
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { email, name, picture } = decodedToken;
+
+    // 2. Check if user exists in your MongoDB
+    let user = await User.findOne({ email });
+
+    let effectiveRole = role;
+
+    // 3. If new user, create them in MongoDB
+    if (!user) {
+      // If no role provided by frontend, ask them for it
+      if (!role) {
+        return res.status(202).json({ success: true, requireRole: true, message: "Please select a role to complete registration." });
+      }
+
+      user = new User({
+        name,
+        email,
+        password: Math.random().toString(36).slice(-10), // Random password since Google handles auth
+        role: role,
+        isVerified: role === 'Patient' ? true : false, 
+        profilePicture: picture || ''
+      });
+      await user.save();
+
+      // Auto-initialize profile document
+      if (user.role === 'Doctor') {
+        const doctorProfile = new DoctorProfile({
+          userId: user._id,
+          specialization: 'General Physician',
+          degree: 'M.B.B.S.',
+          experience: 5,
+          consultationFee: 500,
+          verified: false,
+          hasFilledProfile: false
+        });
+        await doctorProfile.save();
+        
+        // Also create a patient profile for the doctor
+        const patientProfile = new PatientProfile({ userId: user._id });
+        await patientProfile.save();
+        
+        effectiveRole = 'Patient'; // Unverified doctors act as patients
+      } else {
+        const patientProfile = new PatientProfile({ userId: user._id });
+        await patientProfile.save();
+      }
+    } else {
+       // Existing user logic for effective role
+       effectiveRole = user.role;
+       if (user.role === 'Doctor' && !user.isVerified) {
+         effectiveRole = 'Patient';
+       }
+    }
+
+    // 4. Generate App JWT
+    const token = jwt.sign(
+      { userId: user._id, role: effectiveRole },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: effectiveRole,
+          profilePicture: user.profilePicture || ''
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Firebase Auth Error:", error);
+    res.status(401).json({ success: false, message: 'Unauthorized / Invalid Firebase Token' });
   }
 });
 

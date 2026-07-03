@@ -17,11 +17,15 @@ import {
   loginFailure,
 } from '../store/slices/authSlice';
 import axios from 'axios';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '../firebase';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState(null); // 'Patient' or 'Doctor' - used for signup
   const [step, setStep] = useState(1); // 1: Role, 2: Details (for signup)
+  const [pendingGoogleToken, setPendingGoogleToken] = useState(null);
+  const [showRoleModal, setShowRoleModal] = useState(false);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -85,6 +89,42 @@ const Login = () => {
     }
   };
 
+  const handleGoogleSignIn = async (selectedRole = null, existingToken = null) => {
+    setError('');
+    try {
+      let idToken = existingToken;
+      if (!idToken) {
+        const result = await signInWithPopup(auth, googleProvider);
+        idToken = await result.user.getIdToken();
+      }
+      
+      const payload = {
+        idToken,
+        role: selectedRole
+      };
+
+      dispatch(loginStart());
+      const res = await axios.post('http://localhost:5000/api/auth/google-login', payload);
+      
+      if (res.data.requireRole) {
+        dispatch(loginFailure(null)); // Stop loading spinner
+        setPendingGoogleToken(idToken);
+        setShowRoleModal(true);
+        return;
+      }
+
+      if (res.data.success) {
+        dispatch(loginSuccess({ user: res.data.data.user, token: res.data.data.token }));
+        if (res.data.data.user.role === 'Admin') navigate('/admin-dashboard', { replace: true });
+        else if (res.data.data.user.role === 'Doctor') navigate('/doctor-dashboard', { replace: true });
+        else navigate('/patient-dashboard', { replace: true });
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Google Sign-In failed');
+      dispatch(loginFailure(err.response?.data?.message));
+    }
+  };
+
   return (
     <div className='min-h-screen bg-secondary/30 flex items-center justify-center p-4'>
       <div className='absolute top-0 left-0 w-full h-full -z-10 bg-[radial-gradient(circle_at_50%_50%,rgba(46,204,113,0.1),transparent)]' />
@@ -114,7 +154,60 @@ const Login = () => {
 
         <form onSubmit={handleAuth}>
           <AnimatePresence mode='wait'>
-            {isLogin ? (
+            {showRoleModal ? (
+              <motion.div
+                key='role-modal'
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className='space-y-8'
+              >
+                <div className='text-center'>
+                  <h2 className='text-3xl font-black text-text mb-2'>One Last Step!</h2>
+                  <p className='text-slate-500'>Are you joining us as a Patient or Doctor?</p>
+                </div>
+
+                <div className='space-y-4'>
+                  <button
+                    type='button'
+                    onClick={() => handleGoogleSignIn('Patient', pendingGoogleToken)}
+                    className='w-full flex items-center justify-between p-6 rounded-3xl border-2 border-secondary hover:border-primary/50 transition-all group'
+                  >
+                    <div className='flex items-center gap-4'>
+                      <div className='w-14 h-14 rounded-2xl flex items-center justify-center bg-secondary text-primary transition-colors'>
+                        <UserIcon size={28} />
+                      </div>
+                      <div className='text-left'>
+                        <h4 className='font-bold text-text'>As a Patient</h4>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type='button'
+                    onClick={() => handleGoogleSignIn('Doctor', pendingGoogleToken)}
+                    className='w-full flex items-center justify-between p-6 rounded-3xl border-2 border-secondary hover:border-primary/50 transition-all group'
+                  >
+                    <div className='flex items-center gap-4'>
+                      <div className='w-14 h-14 rounded-2xl flex items-center justify-center bg-secondary text-primary transition-colors'>
+                        <Stethoscope size={28} />
+                      </div>
+                      <div className='text-left'>
+                        <h4 className='font-bold text-text'>As a Doctor</h4>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+                
+                <button
+                    type='button'
+                    onClick={() => { setShowRoleModal(false); setPendingGoogleToken(null); }}
+                    className='w-full bg-secondary text-text py-5 rounded-2xl font-bold mt-4'
+                >
+                    Cancel
+                </button>
+              </motion.div>
+            ) : isLogin ? (
               <motion.div
                 key='login'
                 initial={{ opacity: 0, x: 20 }}
@@ -155,6 +248,19 @@ const Login = () => {
                   className='w-full bg-primary text-white py-5 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-colors'
                 >
                   Login
+                </button>
+
+                <div className="flex items-center my-4 before:flex-1 before:border-t before:border-slate-200 before:mt-0.5 after:flex-1 after:border-t after:border-slate-200 after:mt-0.5">
+                  <p className="text-center font-bold mx-4 mb-0 text-slate-400">OR</p>
+                </div>
+
+                <button
+                  type='button'
+                  onClick={() => handleGoogleSignIn(null)}
+                  className='w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-200 text-slate-700 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-colors shadow-sm'
+                >
+                  <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-6 w-6" alt="Google" />
+                  Continue with Google
                 </button>
 
                 <p className='text-center text-sm text-slate-500'>
@@ -298,6 +404,19 @@ const Login = () => {
                     Sign Up
                   </button>
                 </div>
+
+                <div className="flex items-center my-4 before:flex-1 before:border-t before:border-slate-200 before:mt-0.5 after:flex-1 after:border-t after:border-slate-200 after:mt-0.5">
+                  <p className="text-center font-bold mx-4 mb-0 text-slate-400">OR</p>
+                </div>
+
+                <button
+                  type='button'
+                  onClick={() => handleGoogleSignIn(role)}
+                  className='w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-200 text-slate-700 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-colors shadow-sm'
+                >
+                  <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-6 w-6" alt="Google" />
+                  Sign up with Google
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
