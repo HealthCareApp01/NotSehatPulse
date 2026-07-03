@@ -6,7 +6,6 @@ import { fetchAppointments } from '../store/slices/appointmentSlice';
 import {
   Search,
   Calendar,
-  FileText,
   Activity,
   ArrowRight,
   Clock,
@@ -56,10 +55,6 @@ const PatientDashboard = () => {
           <p className="text-slate-500 mt-2">How are you feeling today?</p>
         </div>
         <div className="flex gap-4">
-          <button className="bg-white border-2 border-secondary px-6 py-4 rounded-2xl font-bold flex items-center gap-2 hover:border-primary transition-all">
-            <FileText size={20} className="text-primary" />
-            My Reports
-          </button>
           <button
             onClick={() => navigate('/find-doctors')}
             className="bg-primary text-white px-8 py-4 rounded-2xl font-bold medical-gradient shadow-xl shadow-primary/20 transform hover:-translate-y-1 transition-all"

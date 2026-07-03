@@ -15,7 +15,10 @@ const DoctorProfileSchema = new mongoose.Schema({
       slots: [String]
     }
   ],
-  verified: { type: Boolean, default: false }, // Toggle manually via DB
+  // ❌ REMOVED: age, height, weight, disease, allergy
+  // Note: You already have `isVerified` in your User schema, 
+  // but if you want this specific to medical license verification, keep it here:
+  verified: { type: Boolean, default: false }, 
   hasFilledProfile: { type: Boolean, default: false }
 });
 

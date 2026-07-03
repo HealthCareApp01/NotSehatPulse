@@ -94,6 +94,12 @@ router.put('/me', protect, async (req, res) => {
       if (subscriptionFee !== undefined) updateData.subscriptionFee = subscriptionFee;
       if (bio !== undefined) updateData.bio = bio;
       if (availability !== undefined) updateData.availability = availability;
+      // Personal health data (doctor is also a patient)
+      if (age !== undefined) updateData.age = age ? age.toString().trim() : 'NA';
+      if (height !== undefined) updateData.height = height ? height.toString().trim() : 'NA';
+      if (weight !== undefined) updateData.weight = weight ? weight.toString().trim() : 'NA';
+      if (disease !== undefined) updateData.disease = disease ? disease.toString().trim() : 'NA';
+      if (allergy !== undefined) updateData.allergy = allergy ? allergy.toString().trim() : 'NA';
 
       // Mark profile as completed on any update
       updateData.hasFilledProfile = true;
