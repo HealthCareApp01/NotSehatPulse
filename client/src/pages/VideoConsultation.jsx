@@ -10,7 +10,7 @@ const VideoConsultation = () => {
   const [searchParams] = useSearchParams();
   const patientId = searchParams.get('patientId');
   const apptId = searchParams.get('apptId');
-  
+
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
@@ -19,7 +19,7 @@ const VideoConsultation = () => {
   const [remoteStream, setRemoteStream] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
-  
+
   const localVideoRef = useRef();
   const remoteVideoRef = useRef();
   const peerConnectionRef = useRef(null);
@@ -27,7 +27,7 @@ const VideoConsultation = () => {
   const localStreamRef = useRef(null);
   const ringbackIntervalRef = useRef(null);
   const audioCtxRef = useRef(null);
-  
+
   const [timer, setTimer] = useState(600);
   const [patientJoined, setPatientJoined] = useState(false);
   const [callDeclined, setCallDeclined] = useState(false);
@@ -47,11 +47,11 @@ const VideoConsultation = () => {
   useEffect(() => {
     let isMounted = true;
     socketRef.current = io((import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}`));
-    
+
     const initCall = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        
+
         if (!isMounted) {
           stream.getTracks().forEach(track => track.stop());
           return;
@@ -59,16 +59,16 @@ const VideoConsultation = () => {
 
         setLocalStream(stream);
         localStreamRef.current = stream;
-        
+
         socketRef.current.emit('join-room', roomId);
-        
+
         if (user.role === 'Doctor') {
           socketRef.current.emit('doctor-calling', { patientId, roomId, apptId, doctorName: user.name });
         } else {
           socketRef.current.emit('patient-joined', { roomId });
         }
 
-        const configuration = { 
+        const configuration = {
           iceServers: [
             {
               urls: "stun:stun.relay.metered.ca:80",
@@ -94,7 +94,7 @@ const VideoConsultation = () => {
               credential: "uSA3WDuPz8yKwVYJ",
             },
             { urls: 'stun:stun.l.google.com:19302' }
-          ] 
+          ]
         };
         const peerConnection = new RTCPeerConnection(configuration);
         peerConnectionRef.current = peerConnection;
@@ -196,7 +196,7 @@ const VideoConsultation = () => {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
       const ctx = audioCtxRef.current;
-      
+
       const playRingback = () => {
         const playTone = (startOffset, duration) => {
           const osc1 = ctx.createOscillator();
@@ -206,7 +206,7 @@ const VideoConsultation = () => {
           osc1.type = 'sine';
           osc2.type = 'sine';
           osc1.frequency.value = 440;
-          osc2.frequency.value = 480; 
+          osc2.frequency.value = 480;
 
           gain.gain.setValueAtTime(0, ctx.currentTime + startOffset);
           gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + startOffset + 0.05);
