@@ -318,7 +318,7 @@ const VideoConsultation = () => {
         {/* Remote Video (Main) */}
         <div className="flex-1 bg-black rounded-[32px] overflow-hidden border border-white/10 relative shadow-2xl flex items-center justify-center">
           {remoteStream ? (
-            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-contain" />
           ) : (
             <div className="text-center">
               <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center text-white/20 mx-auto mb-4">
@@ -342,7 +342,7 @@ const VideoConsultation = () => {
         </div>
 
         {/* Local Video (PiP) */}
-        <div className="absolute bottom-12 right-12 w-64 aspect-video bg-black rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl z-20">
+        <div className="absolute bottom-12 right-12 w-64 aspect-video bg-black rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl z-30 transform -scale-x-100">
           <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
         </div>
       </div>
