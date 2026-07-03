@@ -1,9 +1,15 @@
+import 'dotenv/config';
+
+// Global logger silence override: only errors will print to the console
+console.log = () => {};
+console.warn = () => {};
+console.info = () => {};
+
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
-import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import medicineRoutes from './routes/medicineRoutes.js';
 import labTestRoutes from './routes/labTestRoutes.js';
@@ -22,7 +28,6 @@ import DoctorProfile from './models/DoctorProfile.js';
 import { assignDoctor } from './utils/keywordRouter.js';
 import User from './models/User.js';
 
-dotenv.config();
 
 const app = express();
 const server = http.createServer(app);

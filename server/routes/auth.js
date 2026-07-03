@@ -223,7 +223,7 @@ router.post('/google-login', async (req, res) => {
 
   } catch (error) {
     console.error("Firebase Auth Error:", error);
-    res.status(401).json({ success: false, message: 'Unauthorized / Invalid Firebase Token' });
+    res.status(401).json({ success: false, message: error.message || 'Unauthorized / Invalid Firebase Token' });
   }
 });
 

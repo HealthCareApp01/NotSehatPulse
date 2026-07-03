@@ -2,6 +2,7 @@ import express from 'express';
 import { protect } from '../middleware/auth.js';
 import chatbotAgent from '../utils/chatbot/index.js';
 import ChatbotMessage from '../models/ChatbotMessage.js';
+import { encryptMessage, decryptMessage } from '../utils/cryptoHelper.js';
 
 const router = express.Router();
 
@@ -44,40 +45,49 @@ router.post('/message', protect, async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no'); // Prevent proxy buffering in nginx/etc.
 
+  const chatKey = req.user.userId;
+
   try {
     const { message, chatHistory, file, feedback } = req.body;
 
-    // 1. Save User's query/file directly to MongoDB Chatbot Message History
-    const userMsgContent = message?.trim() || (file ? `Uploaded file: ${file.name}` : "");
+    // Decrypt incoming message
+    const decryptedMessage = decryptMessage(message, chatKey);
+
+    // 1. Save User's query/file directly to MongoDB Chatbot Message History (Encrypted)
+    const userMsgContent = decryptedMessage?.trim() || (file ? `Uploaded file: ${file.name}` : "");
     if (userMsgContent || file) {
       await ChatbotMessage.create({
         user: req.user.userId,
         role: 'user',
-        content: userMsgContent || (file ? `Uploaded file: ${file.name}` : "Sent a file"),
+        content: encryptMessage(userMsgContent || (file ? `Uploaded file: ${file.name}` : "Sent a file"), chatKey),
         file: file ? { name: file.name, type: file.type, size: file.size } : null
       });
     }
 
-    // Format chat history into standard messages list for state
+    // Format and decrypt chat history into standard messages list for state
     let messages = [];
     if (chatHistory && Array.isArray(chatHistory)) {
       messages = chatHistory.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.content
+        content: decryptMessage(msg.content, chatKey)
       }));
     }
 
     // Append the new message if present
-    if (message && message.trim()) {
+    if (decryptedMessage && decryptedMessage.trim()) {
       messages.push({
         role: 'user',
-        content: message.trim()
+        content: decryptedMessage.trim()
       });
     }
 
-    // Callback invoked by graph nodes as tokens generate
+    // Callback invoked by graph nodes as tokens generate - encrypt tokens before streaming
     const onToken = (tokenData) => {
-      res.write(`data: ${JSON.stringify(tokenData)}\n\n`);
+      const encryptedTokenData = {
+        ...tokenData,
+        text: tokenData.text ? encryptMessage(tokenData.text, chatKey) : ""
+      };
+      res.write(`data: ${JSON.stringify(encryptedTokenData)}\n\n`);
     };
 
     // Prepare initial state for the LangGraph execution
@@ -104,12 +114,12 @@ router.post('/message', protect, async (req, res) => {
     const lastBotMessage = finalState.messages[finalState.messages.length - 1];
     const botReplyText = lastBotMessage ? lastBotMessage.content : "";
 
-    // 2. Save complete Bot message to MongoDB Chatbot Message History
+    // 2. Save complete Bot message to MongoDB Chatbot Message History (Encrypted)
     if (botReplyText && botReplyText.trim()) {
       await ChatbotMessage.create({
         user: req.user.userId,
         role: 'assistant',
-        content: botReplyText.trim(),
+        content: encryptMessage(botReplyText.trim(), chatKey),
         extractedMedicines: finalState.extractedMedicines || [],
         extractedLabTests: finalState.extractedLabTests || [],
         summary: finalState.summary || "",
@@ -133,7 +143,7 @@ router.post('/message', protect, async (req, res) => {
 
   } catch (error) {
     console.error("❌ Chatbot route error:", error);
-    res.write(`data: ${JSON.stringify({ text: `⚠️ An error occurred while processing your query: ${error.message}` })}\n\n`);
+    res.write(`data: ${JSON.stringify({ text: encryptMessage(`⚠️ An error occurred while processing your query: ${error.message}`, chatKey) })}\n\n`);
     res.write('data: [DONE]\n\n');
     res.end();
   }
