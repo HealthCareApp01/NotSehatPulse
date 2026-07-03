@@ -159,9 +159,6 @@ const PatientDashboard = () => {
                         </div>
                       </div>
                     </div>
-                    <button className="w-full py-4 bg-primary text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-primary-dark transition-all shadow-lg shadow-primary/10 cursor-pointer">
-                      <Video size={18} /> Join Call
-                    </button>
                   </div>
                 ))
               )}

@@ -70,11 +70,30 @@ const VideoConsultation = () => {
 
         const configuration = { 
           iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'stun:stun3.l.google.com:19302' },
-            { urls: 'stun:stun4.l.google.com:19302' }
+            {
+              urls: "stun:stun.relay.metered.ca:80",
+            },
+            {
+              urls: "turn:global.relay.metered.ca:80",
+              username: "90c6f99de9455f1b2e181af3",
+              credential: "uSA3WDuPz8yKwVYJ",
+            },
+            {
+              urls: "turn:global.relay.metered.ca:80?transport=tcp",
+              username: "90c6f99de9455f1b2e181af3",
+              credential: "uSA3WDuPz8yKwVYJ",
+            },
+            {
+              urls: "turn:global.relay.metered.ca:443",
+              username: "90c6f99de9455f1b2e181af3",
+              credential: "uSA3WDuPz8yKwVYJ",
+            },
+            {
+              urls: "turns:global.relay.metered.ca:443?transport=tcp",
+              username: "90c6f99de9455f1b2e181af3",
+              credential: "uSA3WDuPz8yKwVYJ",
+            },
+            { urls: 'stun:stun.l.google.com:19302' }
           ] 
         };
         const peerConnection = new RTCPeerConnection(configuration);
