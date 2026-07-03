@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   X
 } from 'lucide-react';
+import { encryptMessage, decryptMessage } from '../utils/cryptoHelper';
 
 const ChatAndConsult = () => {
   const { user, token } = useSelector((state) => state.auth);
@@ -76,17 +77,20 @@ const ChatAndConsult = () => {
       // If message is in the currently active room, append it
       if (currentActiveRoom && data.roomId === currentActiveRoom.roomId) {
         setMessages((prev) => {
+          // Decrypt content for comparison & storage
+          const decryptedText = decryptMessage(data.content, data.roomId);
+          
           // Avoid duplicate appends if we sent it locally
           const exists = prev.some(
             (m) => m._id === data._id || 
-            (m.content === data.content && m.senderId?._id === data.senderId && Math.abs(new Date(m.timestamp) - new Date()) < 2000)
+            (m.content === decryptedText && m.senderId?._id === data.senderId && Math.abs(new Date(m.timestamp) - new Date()) < 2000)
           );
           if (exists) return prev;
 
           return [...prev, {
             _id: data._id || Date.now().toString(),
             senderId: { _id: data.senderId, name: data.senderName, role: data.senderRole },
-            content: data.content,
+            content: decryptedText,
             roomId: data.roomId,
             timestamp: new Date()
           }];
@@ -178,7 +182,11 @@ const ChatAndConsult = () => {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (response.data.success) {
-            setMessages(response.data.data);
+            const decryptedData = response.data.data.map(msg => ({
+              ...msg,
+              content: decryptMessage(msg.content, activeRoom.roomId)
+            }));
+            setMessages(decryptedData);
           }
         } catch (error) {
           console.error('Error loading chat history:', error);
@@ -211,12 +219,14 @@ const ChatAndConsult = () => {
       return;
     }
 
+    const encryptedContent = encryptMessage(inputMessage, activeRoom.roomId);
+
     const messageData = {
       senderId: user.id,
       senderName: user.name,
       senderRole: user.role,
       receiverId: activeRoom.partner?._id,
-      content: inputMessage,
+      content: encryptedContent,
       roomId: activeRoom.roomId,
       selectedSpecialization
     };
@@ -394,7 +404,7 @@ const ChatAndConsult = () => {
                     )}
                     <div className="flex justify-between items-center mt-0.5">
                       <span className="text-[10px] text-slate-400 truncate block">
-                        {room.lastMessage ? room.lastMessage.content : 'No messages yet'}
+                        {room.lastMessage ? decryptMessage(room.lastMessage.content, room.roomId) : 'No messages yet'}
                       </span>
                       {unreadCounts[room.roomId] > 0 && (
                         <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center ml-2 scale-90 flex-shrink-0 animate-pulse">

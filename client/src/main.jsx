@@ -23,11 +23,13 @@ import AdminRoute from './components/AdminRoute';
 import VideoConsultation from './pages/VideoConsultation';
 import './index.css';
 
-console.log("Hello from main.jsx");
-console.log("Root element exists?", !!document.getElementById('root'));
+// Global logger silence override: only errors will print to the console
+console.log = () => {};
+console.warn = () => {};
+console.info = () => {};
 
 window.onerror = function (message, source, lineno, colno, error) {
-  console.log("GLOBAL ERROR:", message, error);
+  console.error("GLOBAL ERROR:", message, error);
 }
 
 class ErrorBoundary extends React.Component {

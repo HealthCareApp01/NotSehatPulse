@@ -19,13 +19,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { addToCart } from '../store/slices/cartSlice';
 import axios from 'axios';
+import { encryptMessage, decryptMessage } from '../utils/cryptoHelper';
 
 const AISymptomChecker = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   // Auth state to authenticate API calls
-  const { token } = useSelector((state) => state.auth);
+  const { token, user } = useSelector((state) => state.auth);
 
   const [messages, setMessages] = useState([
     {
@@ -63,9 +64,10 @@ const AISymptomChecker = () => {
           }
         });
         if (response.data.success && response.data.data.length > 0) {
+          const chatKey = user?.id || user?._id || 'chatbot_fallback_key';
           const loadedMessages = response.data.data.map(msg => ({
             role: msg.role === 'assistant' ? 'bot' : msg.role,
-            content: msg.content,
+            content: decryptMessage(msg.content, chatKey),
             file: msg.file,
             extractedMedicines: msg.extractedMedicines,
             extractedLabTests: msg.extractedLabTests,
@@ -225,6 +227,13 @@ const AISymptomChecker = () => {
     setAttachedFile(null); // Clear preview
 
     try {
+      const chatKey = user?.id || user?._id || 'chatbot_fallback_key';
+      const encryptedUserMsg = encryptMessage(userMsgContent, chatKey);
+      const encryptedHistory = messages.map(m => ({ 
+        role: m.role, 
+        content: encryptMessage(m.content, chatKey) 
+      }));
+
       const response = await fetch('http://localhost:5000/api/chatbot/message', {
         method: 'POST',
         headers: {
@@ -232,8 +241,8 @@ const AISymptomChecker = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          message: userMsgContent,
-          chatHistory: messages.map(m => ({ role: m.role, content: m.content })),
+          message: encryptedUserMsg,
+          chatHistory: encryptedHistory,
           file: filePayload
         })
       });
@@ -282,7 +291,8 @@ const AISymptomChecker = () => {
             try {
               const parsed = JSON.parse(dataStr);
               if (parsed.text) {
-                botReply += parsed.text;
+                const decryptedChunk = decryptMessage(parsed.text, chatKey);
+                botReply += decryptedChunk;
               }
               
               setMessages(prev => {
@@ -459,6 +469,13 @@ const AISymptomChecker = () => {
     setLoading(true);
 
     try {
+      const chatKey = user?.id || user?._id || 'chatbot_fallback_key';
+      const encryptedMsg = encryptMessage(`Retry extracting medicines with feedback.`, chatKey);
+      const encryptedHistory = messages.map(m => ({ 
+        role: m.role, 
+        content: encryptMessage(m.content, chatKey) 
+      }));
+
       const response = await fetch('http://localhost:5000/api/chatbot/message', {
         method: 'POST',
         headers: {
@@ -466,8 +483,8 @@ const AISymptomChecker = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          message: `Retry extracting medicines with feedback.`,
-          chatHistory: messages.map(m => ({ role: m.role, content: m.content })),
+          message: encryptedMsg,
+          chatHistory: encryptedHistory,
           file: lastUploadedFile,
           feedback: feedbackPrompt
         })
@@ -517,7 +534,8 @@ const AISymptomChecker = () => {
             try {
               const parsed = JSON.parse(dataStr);
               if (parsed.text) {
-                botReply += parsed.text;
+                const decryptedChunk = decryptMessage(parsed.text, chatKey);
+                botReply += decryptedChunk;
               }
               
               setMessages(prev => {

@@ -259,7 +259,7 @@ const Login = () => {
                   onClick={() => handleGoogleSignIn(null)}
                   className='w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-200 text-slate-700 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-colors shadow-sm'
                 >
-                  <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-6 w-6" alt="Google" />
+                  <img src="https://res.cloudinary.com/uwv2e0xt/image/upload/v1783074142/assets/google_logo.svg" className="h-6 w-6" alt="Google" />
                   Continue with Google
                 </button>
 
@@ -414,7 +414,7 @@ const Login = () => {
                   onClick={() => handleGoogleSignIn(role)}
                   className='w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-200 text-slate-700 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-colors shadow-sm'
                 >
-                  <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-6 w-6" alt="Google" />
+                  <img src="https://res.cloudinary.com/uwv2e0xt/image/upload/v1783074142/assets/google_logo.svg" className="h-6 w-6" alt="Google" />
                   Sign up with Google
                 </button>
               </motion.div>
