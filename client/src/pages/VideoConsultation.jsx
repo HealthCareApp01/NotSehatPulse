@@ -293,9 +293,9 @@ const VideoConsultation = () => {
   };
 
   return (
-    <div className="h-screen w-screen bg-slate-900 flex flex-col overflow-hidden fixed inset-0 z-[9999]">
+    <div className="fixed inset-0 bg-slate-900 flex flex-col overflow-hidden z-[9999]">
       {/* Header */}
-      <div className="h-20 px-8 flex items-center justify-between border-b border-white/10 bg-black/20 backdrop-blur-md z-10">
+      <div className="h-20 px-8 flex items-center justify-between border-b border-white/10 bg-black/20 backdrop-blur-md z-10 flex-shrink-0">
         <div>
           <h1 className="text-xl font-bold text-white">Consultation Room</h1>
           {user.role === 'Doctor' && !patientJoined && (
@@ -314,7 +314,7 @@ const VideoConsultation = () => {
       </div>
 
       {/* Video Area */}
-      <div className="flex-1 p-8 flex gap-8 relative">
+      <div className="flex-1 min-h-0 p-4 sm:p-6 flex gap-8 relative">
         {/* Remote Video (Main) */}
         <div className="flex-1 bg-black rounded-[32px] overflow-hidden border border-white/10 relative shadow-2xl flex items-center justify-center">
           {remoteStream ? (
@@ -342,18 +342,18 @@ const VideoConsultation = () => {
         </div>
 
         {/* Local Video (PiP) */}
-        <div className="absolute bottom-12 right-12 w-64 h-36 bg-black rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl z-40">
+        <div className="absolute bottom-8 right-8 w-48 sm:w-64 h-28 sm:h-36 bg-black rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl z-40">
           <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
         </div>
       </div>
 
       {/* Controls */}
-      <div className="h-24 bg-black/40 backdrop-blur-lg flex items-center justify-center gap-6 z-10">
-        <button onClick={toggleMute} className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${isMuted ? 'bg-rose-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
-          {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
+      <div className="h-20 bg-black/60 backdrop-blur-lg flex items-center justify-center gap-6 z-10 flex-shrink-0">
+        <button onClick={toggleMute} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isMuted ? 'bg-rose-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+          {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
         </button>
-        <button onClick={toggleVideo} className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${isVideoOff ? 'bg-rose-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
-          {isVideoOff ? <VideoOff size={24} /> : <VideoIcon size={24} />}
+        <button onClick={toggleVideo} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isVideoOff ? 'bg-rose-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+          {isVideoOff ? <VideoOff size={20} /> : <VideoIcon size={20} />}
         </button>
       </div>
     </div>
