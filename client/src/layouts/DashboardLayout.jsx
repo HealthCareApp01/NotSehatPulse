@@ -16,7 +16,8 @@ import {
   Moon,
   Sparkles,
   Menu,
-  X
+  X,
+  PlusCircle
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
