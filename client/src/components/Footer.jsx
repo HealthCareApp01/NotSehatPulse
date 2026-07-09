@@ -1,5 +1,6 @@
 import React from 'react';
 import { Heart, Globe, Share2, Mail, Phone } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   return (
@@ -11,7 +12,7 @@ const Footer = () => {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center medical-gradient">
                 <span className="text-white font-bold text-lg">H</span>
               </div>
-              <span className="text-xl font-bold">HealthCare</span>
+              <span className="text-xl font-bold">heAlthI</span>
             </div>
             <p className="text-white/60 text-sm leading-relaxed">
               Premium telemedicine platform providing 24/7 access to top-rated verified doctors. 
@@ -33,20 +34,20 @@ const Footer = () => {
           <div>
             <h4 className="font-bold text-lg mb-6">Quick Links</h4>
             <ul className="space-y-4 text-white/60 text-sm">
-              <li className="hover:text-primary cursor-pointer transition-colors">Find Doctors</li>
-              <li className="hover:text-primary cursor-pointer transition-colors">Medical Pharmacy</li>
-              <li className="hover:text-primary cursor-pointer transition-colors">Lab Tests</li>
-              <li className="hover:text-primary cursor-pointer transition-colors">Health Packages</li>
+              <li><Link to="/find-doctors" className="hover:text-primary transition-colors">Find Doctors</Link></li>
+              <li><Link to="/pharmacy" className="hover:text-primary transition-colors">Medical Pharmacy</Link></li>
+              <li><Link to="/labs" className="hover:text-primary transition-colors">Lab Tests</Link></li>
+              <li><Link to="/pharmacy" className="hover:text-primary transition-colors">Health Packages</Link></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-bold text-lg mb-6">Support</h4>
             <ul className="space-y-4 text-white/60 text-sm">
-              <li className="hover:text-primary cursor-pointer transition-colors">My Appointments</li>
-              <li className="hover:text-primary cursor-pointer transition-colors">Help Center</li>
-              <li className="hover:text-primary cursor-pointer transition-colors">Privacy Policy</li>
-              <li className="hover:text-primary cursor-pointer transition-colors">Terms of Use</li>
+              <li><Link to="/appointments" className="hover:text-primary transition-colors">My Appointments</Link></li>
+              <li><Link to="/contact-us" className="hover:text-primary transition-colors">Help Center</Link></li>
+              <li><Link to="/" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/" className="hover:text-primary transition-colors">Terms of Use</Link></li>
             </ul>
           </div>
 
