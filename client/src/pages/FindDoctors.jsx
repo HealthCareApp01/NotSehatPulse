@@ -69,11 +69,13 @@ const loadRazorpayScript = () => {
 
 const FindDoctors = () => {
   const dispatch = useDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { token, isAuthenticated } = useSelector((state) => state.auth);
   const { searchTerm } = useSelector((state) => state.products);
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeSpecialty, setActiveSpecialty] = useState('All');
+  const [activeSpecialty, setActiveSpecialty] = useState(location.state?.specialty || 'All');
   const [activeDoctor, setActiveDoctor] = useState(null);
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(-1);
   const [error, setError] = useState('');
@@ -84,8 +86,6 @@ const FindDoctors = () => {
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
-  const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
     if (location.state?.autoSelectDoctorId && doctors.length > 0) {
@@ -445,7 +445,7 @@ const FindDoctors = () => {
         {/* Filter Pills */}
         <div className="flex flex-wrap gap-3 items-center">
           <span className="text-slate-400 font-bold text-xs uppercase tracking-wider mr-2">Speciality:</span>
-          {specialties.map((spec) => (
+          {Array.from(new Set([...specialties, activeSpecialty])).map((spec) => (
             <button
               key={spec}
               onClick={() => handlePillClick(spec)}

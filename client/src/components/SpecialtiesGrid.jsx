@@ -3,12 +3,12 @@ import { Baby, Activity, Heart, Eye, Brain, Stethoscope } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const specialties = [
-  { name: 'Pediatrics', icon: <Baby size={32} />, color: 'bg-blue-50 text-blue-600' },
-  { name: 'Gynaecology', icon: <Heart size={32} />, color: 'bg-pink-50 text-pink-600' },
-  { name: 'Dermatology', icon: <Activity size={32} />, color: 'bg-orange-50 text-orange-600' },
-  { name: 'Oncology', icon: <Brain size={32} />, color: 'bg-indigo-50 text-indigo-600' },
-  { name: 'Physician', icon: <Stethoscope size={32} />, color: 'bg-green-50 text-green-600' },
-  { name: 'Ophthalmology', icon: <Eye size={32} />, color: 'bg-purple-50 text-purple-600' },
+  { name: 'Pediatrics', filterName: 'Pediatrician', icon: <Baby size={32} />, color: 'bg-blue-50 text-blue-600' },
+  { name: 'Gynaecology', filterName: 'Gynaecologist', icon: <Heart size={32} />, color: 'bg-pink-50 text-pink-600' },
+  { name: 'Dermatology', filterName: 'Dermatologist', icon: <Activity size={32} />, color: 'bg-orange-50 text-orange-600' },
+  { name: 'Oncology', filterName: 'Oncologist', icon: <Brain size={32} />, color: 'bg-indigo-50 text-indigo-600' },
+  { name: 'Physician', filterName: 'Physician', icon: <Stethoscope size={32} />, color: 'bg-green-50 text-green-600' },
+  { name: 'Ophthalmology', filterName: 'Ophthalmologist', icon: <Eye size={32} />, color: 'bg-purple-50 text-purple-600' },
 ];
 
 const SpecialtiesGrid = () => {
@@ -35,7 +35,7 @@ const SpecialtiesGrid = () => {
             <motion.div
               key={spec.name}
               whileHover={{ y: -5 }}
-              onClick={() => navigate('/find-doctors')}
+              onClick={() => navigate('/find-doctors', { state: { specialty: spec.filterName } })}
               className="flex flex-col items-center p-8 rounded-[32px] border border-secondary hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all cursor-pointer group"
             >
               <div className={`w-16 h-16 ${spec.color} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
