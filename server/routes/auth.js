@@ -297,4 +297,67 @@ router.post('/google-login', async (req, res) => {
   }
 });
 
+// Forgot Password - Send OTP
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ success: false, message: 'No account found with this email' });
+
+    // Generate 6-digit OTP (reusing existing Otp model)
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    await Otp.deleteMany({ email });
+    await new Otp({ email, otp: otpCode }).save();
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Reset your heAlthI password',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Password Reset Request</h2>
+          <p>Hi ${user.name}, we received a request to reset your password. Use the OTP below. It is valid for 10 minutes.</p>
+          <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 24px; letter-spacing: 5px; font-weight: bold; border-radius: 5px;">
+            ${otpCode}
+          </div>
+          <p>If you did not request a password reset, please ignore this email.</p>
+        </div>
+      `,
+    });
+
+    res.status(200).json({ success: true, message: 'Password reset OTP sent to your email' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ success: false, message: 'Failed to send reset email' });
+  }
+});
+
+// Reset Password - Verify OTP and set new password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ success: false, message: 'All fields are required' });
+    }
+
+    const validOtp = await Otp.findOne({ email, otp });
+    if (!validOtp) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await User.updateOne({ email }, { password: hashedPassword });
+    await Otp.deleteMany({ email });
+
+    res.status(200).json({ success: true, message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ success: false, message: 'Failed to reset password' });
+  }
+});
+
 export default router;

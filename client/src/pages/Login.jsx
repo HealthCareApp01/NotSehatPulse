@@ -31,6 +31,10 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1); // 1: enter email, 2: enter OTP + new password
+  const [newPassword, setNewPassword] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
 
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -44,6 +48,41 @@ const Login = () => {
       else navigate('/patient-dashboard', { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
+
+  const handleForgotPassword = async (e) => {
+    e?.preventDefault();
+    setError('');
+    if (!forgotEmail) return setError('Please enter your email');
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/auth/forgot-password`, { email: forgotEmail });
+      if (res.data.success) {
+        setForgotStep(2);
+        setError('');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to send reset OTP');
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e?.preventDefault();
+    setError('');
+    if (!otp || !newPassword) return setError('All fields are required');
+    try {
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/auth/reset-password`, { email: forgotEmail, otp, newPassword });
+      if (res.data.success) {
+        setIsForgotPassword(false);
+        setForgotStep(1);
+        setForgotEmail('');
+        setOtp('');
+        setNewPassword('');
+        setIsLogin(true);
+        setError('');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to reset password');
+    }
+  };
 
   const handleAuth = async (e) => {
     e?.preventDefault();
@@ -170,9 +209,102 @@ const Login = () => {
           </div>
         )}
 
-        <form onSubmit={handleAuth}>
+        <form onSubmit={isForgotPassword ? (forgotStep === 1 ? handleForgotPassword : handleResetPassword) : handleAuth}>
           <AnimatePresence mode='wait'>
-            {showRoleModal ? (
+            {isForgotPassword ? (
+              forgotStep === 1 ? (
+                <motion.div
+                  key='forgot-step1'
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className='space-y-8'
+                >
+                  <div className='text-center'>
+                    <h2 className='text-3xl font-black text-text mb-2'>Forgot Password?</h2>
+                    <p className='text-slate-500'>Enter your email to receive a reset OTP</p>
+                  </div>
+                  <div className='space-y-4'>
+                    <div className='relative'>
+                      <Mail className='absolute left-6 top-1/2 -translate-y-1/2 text-slate-400' size={20} />
+                      <input
+                        type='email'
+                        placeholder='Your registered email'
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        className='w-full bg-secondary/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none rounded-2xl py-5 pl-16 pr-6 font-bold text-lg transition-all'
+                      />
+                    </div>
+                  </div>
+                  <div className='flex gap-4'>
+                    <button
+                      type='button'
+                      onClick={() => { setIsForgotPassword(false); setError(''); }}
+                      className='flex-1 bg-secondary text-text py-5 rounded-2xl font-bold'
+                    >
+                      Back
+                    </button>
+                    <button
+                      type='submit'
+                      className='flex-[2] bg-primary text-white py-5 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-colors'
+                    >
+                      Send OTP
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key='forgot-step2'
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className='space-y-8'
+                >
+                  <div className='text-center'>
+                    <h2 className='text-3xl font-black text-text mb-2'>Reset Password</h2>
+                    <p className='text-slate-500'>Enter the OTP sent to {forgotEmail}</p>
+                  </div>
+                  <div className='space-y-4'>
+                    <div className='relative'>
+                      <CheckCircle2 className='absolute left-6 top-1/2 -translate-y-1/2 text-slate-400' size={20} />
+                      <input
+                        type='text'
+                        placeholder='6-digit OTP'
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                        className='w-full bg-secondary/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none rounded-2xl py-5 pl-16 pr-6 font-bold text-lg text-center tracking-[0.5em] transition-all'
+                        maxLength={6}
+                      />
+                    </div>
+                    <div className='relative'>
+                      <Lock className='absolute left-6 top-1/2 -translate-y-1/2 text-slate-400' size={20} />
+                      <input
+                        type='password'
+                        placeholder='New Password'
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className='w-full bg-secondary/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none rounded-2xl py-5 pl-16 pr-6 font-bold text-lg transition-all'
+                      />
+                    </div>
+                  </div>
+                  <div className='flex gap-4'>
+                    <button
+                      type='button'
+                      onClick={() => setForgotStep(1)}
+                      className='flex-1 bg-secondary text-text py-5 rounded-2xl font-bold'
+                    >
+                      Back
+                    </button>
+                    <button
+                      type='submit'
+                      className='flex-[2] bg-primary text-white py-5 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-colors'
+                    >
+                      Reset Password
+                    </button>
+                  </div>
+                </motion.div>
+              )
+            ) : showRoleModal ? (
               <motion.div
                 key='role-modal'
                 initial={{ opacity: 0, x: 20 }}
@@ -258,6 +390,15 @@ const Login = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       className='w-full bg-secondary/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none rounded-2xl py-5 pl-16 pr-6 font-bold text-lg transition-all'
                     />
+                  </div>
+                  <div className='text-right -mt-1'>
+                    <button
+                      type='button'
+                      onClick={() => { setIsForgotPassword(true); setForgotStep(1); setForgotEmail(''); setOtp(''); setNewPassword(''); setError(''); }}
+                      className='text-sm text-primary font-bold hover:underline'
+                    >
+                      Forgot Password?
+                    </button>
                   </div>
                 </div>
 
