@@ -1,26 +1,96 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import nodemailer from 'nodemailer';
 import User from '../models/User.js';
 import DoctorProfile from '../models/DoctorProfile.js';
 import PatientProfile from '../models/PatientProfile.js';
+import Otp from '../models/Otp.js';
 import admin from '../utils/firebaseAdmin.js';
 
 const router = express.Router();
 
-// Signup Route
+// Setup Nodemailer Transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // You can use other services as well
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+// Send OTP Route for Signup
+router.post('/send-signup-otp', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+
+    if (!email || !name) {
+      return res.status(400).json({ success: false, message: "Email and name are required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).json({ success: false, message: "Email already registered" });
+    }
+
+    // Generate 6-digit OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Remove any existing OTP for this email
+    await Otp.deleteMany({ email });
+
+    // Save new OTP
+    const otpData = new Otp({ email, otp: otpCode });
+    await otpData.save();
+
+    // Send Email
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Verify your heAlthI account',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Welcome to heAlthI, ${name}!</h2>
+          <p>Please use the following OTP to complete your signup process. This OTP is valid for 10 minutes.</p>
+          <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 24px; letter-spacing: 5px; font-weight: bold; border-radius: 5px;">
+            ${otpCode}
+          </div>
+          <p>If you did not request this, please ignore this email.</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ success: true, message: "OTP sent successfully" });
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    res.status(500).json({ success: false, message: "Failed to send OTP email" });
+  }
+});
+
+// Signup Route (Verify OTP and Create User)
 router.post('/signup', async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, otp } = req.body;
 
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ success: false, message: "All fields are required" });
+    if (!name || !email || !password || !role || !otp) {
+      return res.status(400).json({ success: false, message: "All fields including OTP are required" });
     }
 
     let user = await User.findOne({ email });
     if (user) {
       return res.status(400).json({ success: false, message: "Email already registered" });
     }
+
+    // Verify OTP
+    const validOtp = await Otp.findOne({ email, otp });
+    if (!validOtp) {
+      return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
+    }
+
+    // Delete the OTP after successful verification
+    await Otp.deleteMany({ email });
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);

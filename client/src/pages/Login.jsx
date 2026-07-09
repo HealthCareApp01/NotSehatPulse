@@ -30,6 +30,7 @@ const Login = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
 
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -72,19 +73,36 @@ const Login = () => {
         return;
       }
 
-      if (!name || !email || !password) return setError('All fields required');
+      if (step === 2) {
+        if (!name || !email || !password) return setError('All fields required');
 
-      dispatch(loginStart());
-      try {
-        const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/auth/signup`, { name, email, password, role });
-        if (res.data.success) {
-          dispatch(loginSuccess({ user: res.data.data.user, token: res.data.data.token }));
-          if (role === 'Doctor') navigate('/doctor-dashboard', { replace: true });
-          else navigate('/patient-dashboard', { replace: true });
+        try {
+          const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/auth/send-signup-otp`, { name, email });
+          if (res.data.success) {
+            setStep(3);
+            setError('');
+          }
+        } catch (err) {
+          setError(err.response?.data?.message || 'Failed to send OTP');
         }
-      } catch (err) {
-        setError(err.response?.data?.message || 'Signup failed');
-        dispatch(loginFailure(err.response?.data?.message));
+        return;
+      }
+
+      if (step === 3) {
+        if (!otp) return setError('OTP is required');
+
+        dispatch(loginStart());
+        try {
+          const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/auth/signup`, { name, email, password, role, otp });
+          if (res.data.success) {
+            dispatch(loginSuccess({ user: res.data.data.user, token: res.data.data.token }));
+            if (role === 'Doctor') navigate('/doctor-dashboard', { replace: true });
+            else navigate('/patient-dashboard', { replace: true });
+          }
+        } catch (err) {
+          setError(err.response?.data?.message || 'Signup failed');
+          dispatch(loginFailure(err.response?.data?.message));
+        }
       }
     }
   };
@@ -137,7 +155,7 @@ const Login = () => {
         {/* Progress Bar for Signup */}
         {!isLogin && (
           <div className='flex gap-2 mb-6'>
-            {[1, 2].map((s) => (
+            {[1, 2, 3].map((s) => (
               <div
                 key={s}
                 className={`h-1.5 flex-1 rounded-full transition-colors ${step >= s ? 'medical-gradient' : 'bg-secondary'}`}
@@ -343,7 +361,7 @@ const Login = () => {
                   </button>
                 </p>
               </motion.div>
-            ) : (
+            ) : step === 2 ? (
               <motion.div
                 key='signup-step2'
                 initial={{ opacity: 0, x: 20 }}
@@ -401,7 +419,7 @@ const Login = () => {
                     type='submit'
                     className='flex-[2] bg-primary text-white py-5 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-colors'
                   >
-                    Sign Up
+                    Send OTP
                   </button>
                 </div>
 
@@ -417,6 +435,49 @@ const Login = () => {
                   <img src="https://res.cloudinary.com/uwv2e0xt/image/upload/v1783074142/assets/google_logo.svg" className="h-6 w-6" alt="Google" />
                   Sign up with Google
                 </button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key='signup-step3'
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className='space-y-8'
+              >
+                <div className='text-center'>
+                  <h2 className='text-3xl font-black text-text mb-2'>Verify Email</h2>
+                  <p className='text-slate-500'>Enter the OTP sent to {email}</p>
+                </div>
+
+                <div className='space-y-4'>
+                  <div className='relative'>
+                    <CheckCircle2 className='absolute left-6 top-1/2 -translate-y-1/2 text-slate-400' size={20} />
+                    <input
+                      type='text'
+                      placeholder='6-digit OTP'
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      className='w-full bg-secondary/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none rounded-2xl py-5 pl-16 pr-6 font-bold text-lg text-center tracking-[0.5em] transition-all'
+                      maxLength={6}
+                    />
+                  </div>
+                </div>
+
+                <div className='flex gap-4'>
+                  <button
+                    type='button'
+                    onClick={() => setStep(2)}
+                    className='flex-1 bg-secondary text-text py-5 rounded-2xl font-bold'
+                  >
+                    Back
+                  </button>
+                  <button
+                    type='submit'
+                    className='flex-[2] bg-primary text-white py-5 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-colors'
+                  >
+                    Verify & Sign Up
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
