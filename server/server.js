@@ -21,6 +21,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
 import subscriptionRoutes from './routes/subscriptionRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import contactRoutes from './routes/contactRoutes.js';
 import Message from './models/Message.js';
 import cron from 'node-cron';
 import Appointment from './models/Appointment.js';
@@ -55,6 +56,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/contact', contactRoutes);
 
 // MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/healthcare';

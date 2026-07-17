@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Phone, MapPin, Send, CheckCircle } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import axios from 'axios';
 
-const doctor1 = 'https://images.unsplash.com/photo-1559839734-2b71f1536780?auto=format&fit=crop&q=80&w=600&h=600';
-const doctor2 = 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=600&h=600';
+const doctor1 = 'https://res.cloudinary.com/uwv2e0xt/image/upload/v1784285725/healthcare_assets/doctor1.jpg';
+const doctor2 = 'https://res.cloudinary.com/uwv2e0xt/image/upload/v1784285670/healthcare_assets/doctor2.jpg';
 
 const ContactUs = () => {
   const [currentImage, setCurrentImage] = useState(0);
@@ -26,15 +27,20 @@ const ContactUs = () => {
     return () => clearInterval(timer);
   }, [images.length]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setFormStatus('sending');
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      await axios.post(`${baseUrl}/api/contact`, formData);
       setFormStatus('success');
       setFormData({ name: '', email: '', subject: '', message: '' });
       setTimeout(() => setFormStatus('idle'), 5000);
-    }, 1500);
+    } catch (error) {
+      console.error('Failed to submit contact query:', error);
+      setFormStatus('error');
+      setTimeout(() => setFormStatus('idle'), 5000);
+    }
   };
 
   const handleChange = (e) => {
@@ -49,7 +55,7 @@ const ContactUs = () => {
         <div className="flex flex-col lg:flex-row gap-12 bg-white rounded-[40px] shadow-2xl shadow-primary/10 overflow-hidden border border-secondary">
           
           {/* Left Side: Dynamic Image Carousel */}
-          <div className="lg:w-1/2 relative h-[400px] lg:h-auto min-h-[500px] overflow-hidden">
+          <div className="lg:w-1/2 relative h-[350px] sm:h-[450px] lg:h-auto min-h-[400px] sm:min-h-[500px] overflow-hidden">
             <AnimatePresence mode="wait">
               <motion.img
                 key={currentImage}
@@ -64,18 +70,18 @@ const ContactUs = () => {
             </AnimatePresence>
             
             {/* Overlay Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-transparent flex flex-col justify-end p-12 text-white">
+            <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-transparent flex flex-col justify-end p-6 sm:p-12 text-white">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
               >
-                <h2 className="text-4xl font-bold mb-4">Dedicated to Your Well-being</h2>
-                <p className="text-white/80 text-lg max-w-md">
+                <h2 className="text-2xl sm:text-4xl font-bold mb-4">Dedicated to Your Well-being</h2>
+                <p className="text-white/80 text-sm sm:text-lg max-w-md">
                   Our team of expert doctors is available 24/7 to provide you with the best medical care and guidance.
                 </p>
                 
-                <div className="mt-8 flex gap-6">
+                <div className="mt-4 sm:mt-8 flex flex-col sm:flex-row gap-4 sm:gap-6">
                   <div className="flex items-center gap-2">
                     <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
                       <CheckCircle size={20} />
@@ -160,7 +166,7 @@ const ContactUs = () => {
                     type="submit"
                     disabled={formStatus !== 'idle'}
                     className={`w-full py-5 rounded-2xl font-bold text-white text-lg transition-all flex items-center justify-center gap-3 ${
-                      formStatus === 'success' ? 'bg-green-500' : 'bg-primary hover:bg-primary-dark shadow-xl shadow-primary/20 hover:shadow-2xl'
+                      formStatus === 'success' ? 'bg-green-500' : formStatus === 'error' ? 'bg-red-500' : 'bg-primary hover:bg-primary-dark shadow-xl shadow-primary/20 hover:shadow-2xl'
                     }`}
                   >
                     {formStatus === 'idle' && (
@@ -178,10 +184,16 @@ const ContactUs = () => {
                         Message Sent!
                       </>
                     )}
+                    {formStatus === 'error' && (
+                      <>
+                        <AlertCircle size={20} />
+                        Failed to Send. Try again.
+                      </>
+                    )}
                   </button>
                 </form>
 
-                <div className="mt-12 grid grid-cols-2 gap-8 pt-8 border-t border-secondary">
+                <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 pt-8 border-t border-secondary">
                   <div className="flex flex-col gap-1">
                     <span className="text-xs font-bold text-text/40 uppercase">Email Us</span>
                     <a href="mailto:support@healthcare.com" className="text-sm font-bold hover:text-primary transition-colors">support@healthcare.com</a>

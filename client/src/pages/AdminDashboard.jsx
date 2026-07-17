@@ -1,16 +1,51 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchUnverifiedDoctors, verifyDoctor, markFraudDoctor, clearAdminMessages } from '../store/slices/adminSlice';
-import { ShieldCheck, ShieldAlert, XCircle, Stethoscope, Clock, Banknote, UserRound } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, XCircle, Stethoscope, Clock, Banknote, UserRound, Trash2, Mail, MessageSquare, Calendar } from 'lucide-react';
+import axios from 'axios';
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
   const { unverifiedDoctors, loading, error, successMessage } = useSelector((state) => state.admin);
+  const { token } = useSelector((state) => state.auth);
+
+  const [queries, setQueries] = useState([]);
+  const [queriesLoading, setQueriesLoading] = useState(false);
+
+  const fetchQueries = async () => {
+    setQueriesLoading(true);
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const res = await axios.get(`${baseUrl}/api/contact`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setQueries(res.data.data);
+    } catch (err) {
+      console.error('Failed to fetch contact queries:', err);
+    } finally {
+      setQueriesLoading(false);
+    }
+  };
 
   useEffect(() => {
     dispatch(fetchUnverifiedDoctors());
-  }, [dispatch]);
+    if (token) {
+      fetchQueries();
+    }
+  }, [dispatch, token]);
+
+  const handleDeleteQuery = async (id) => {
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      await axios.delete(`${baseUrl}/api/contact/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setQueries(queries.filter(q => q._id !== id));
+    } catch (err) {
+      console.error('Failed to delete query:', err);
+    }
+  };
 
   // Clear messages after 5 seconds
   useEffect(() => {
@@ -137,6 +172,76 @@ const AdminDashboard = () => {
                     >
                       <XCircle size={18} /> Fraud
                     </button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      {/* Contact Queries Section */}
+      <div className="bg-white p-8 rounded-[40px] border border-secondary shadow-sm">
+        <h2 className="text-2xl font-bold text-text mb-8 flex items-center gap-2">
+          <MessageSquare className="text-primary" /> Contact Queries
+          <span className="bg-primary text-white text-sm px-3 py-1 rounded-full ml-2">
+            {queries.length}
+          </span>
+        </h2>
+
+        {queriesLoading && queries.length === 0 ? (
+          <div className="flex justify-center py-20">
+            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : queries.length === 0 ? (
+          <div className="bg-slate-50 text-slate-500 p-20 rounded-[32px] border border-secondary text-center space-y-4">
+            <MessageSquare size={64} className="mx-auto text-primary opacity-50 mb-4" />
+            <p className="font-bold text-lg">No inquiries yet!</p>
+            <p className="text-sm">There are no contact queries submitted by users at this moment.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <AnimatePresence>
+              {queries.map((query) => (
+                <motion.div
+                  key={query._id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9, filter: 'blur(4px)' }}
+                  className="bg-slate-50 p-6 rounded-3xl border border-secondary hover:border-primary/50 transition-colors flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h4 className="font-black text-lg text-text leading-tight">{query.subject}</h4>
+                        <span className="text-xs text-slate-400 font-bold flex items-center gap-1 mt-1">
+                          <Calendar size={12} /> {new Date(query.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteQuery(query._id)}
+                        className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors cursor-pointer"
+                        title="Dismiss Query"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      <div className="text-sm font-bold text-slate-600 flex items-center gap-2">
+                        <UserRound size={14} className="text-primary" />
+                        <span>{query.name}</span>
+                      </div>
+                      <div className="text-sm font-bold text-slate-500 hover:text-primary transition-colors flex items-center gap-2">
+                        <Mail size={14} className="text-primary" />
+                        <a href={`mailto:${query.email}`}>{query.email}</a>
+                      </div>
+                    </div>
+
+                    <p className="text-slate-600 bg-white p-4 rounded-2xl border border-secondary/50 text-sm whitespace-pre-wrap leading-relaxed">
+                      {query.message}
+                    </p>
                   </div>
                 </motion.div>
               ))}
