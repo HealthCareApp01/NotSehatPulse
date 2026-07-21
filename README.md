@@ -3,7 +3,7 @@
 [![React](https://img.shields.io/badge/React-18.2.0-blue.svg?style=for-the-badge&logo=react)](https://react.dev/)
 [![Node](https://img.shields.io/badge/Node.js-Express-green.svg?style=for-the-badge&logo=node.js)](https://nodejs.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-emerald.svg?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+
 
 **heAlthI** is a state-of-the-art, secure, end-to-end encrypted digital healthcare ecosystem. It bridges the gap between patients, healthcare professionals, and diagnostic labs through modern AI assistance, secure video/chat consultations, medical prescription OCR processing, and seamless e-commerce pharmacy workflows.
 
