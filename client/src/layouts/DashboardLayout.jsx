@@ -67,6 +67,7 @@ const DashboardLayout = ({ children }) => {
     consultationFee: ''
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const socketRef = React.useRef(null);
 
   React.useEffect(() => {
     const fetchProfile = async () => {
@@ -170,6 +171,7 @@ const DashboardLayout = ({ children }) => {
   useEffect(() => {
     if (user) {
       const socket = io((import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}`));
+      socketRef.current = socket;
       socket.emit('join-user-room', user.id || user._id);
       
       if (user.role === 'Patient') {
@@ -179,7 +181,10 @@ const DashboardLayout = ({ children }) => {
         });
       }
 
-      return () => socket.disconnect();
+      return () => {
+        socket.disconnect();
+        socketRef.current = null;
+      };
     }
   }, [user]);
 
@@ -268,10 +273,10 @@ const DashboardLayout = ({ children }) => {
             </div>
             <div className="flex gap-4">
               <button onClick={() => {
-                const socket = io((import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}`));
-                socket.emit('call-declined', { roomId: incomingCall.roomId });
+                if (socketRef.current) {
+                  socketRef.current.emit('call-declined', { roomId: incomingCall.roomId });
+                }
                 setIncomingCall(null);
-                setTimeout(() => socket.disconnect(), 500);
               }} className="flex-1 bg-slate-100 text-slate-600 font-bold py-3 rounded-2xl hover:bg-slate-200 transition">Decline</button>
               <button onClick={() => {
                 navigate(`/consultation/${incomingCall.roomId}?patientId=${user.id || user._id}&apptId=${incomingCall.apptId}`);

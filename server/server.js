@@ -144,6 +144,14 @@ io.on('connection', (socket) => {
     socket.to(data.roomId).emit('call-declined');
   });
 
+  socket.on('toggle-mute', (data) => {
+    socket.to(data.roomId).emit('remote-mute-change', { isMuted: data.isMuted });
+  });
+
+  socket.on('toggle-video', (data) => {
+    socket.to(data.roomId).emit('remote-video-change', { isVideoOff: data.isVideoOff });
+  });
+
 // Real-time Chat
   socket.on('send-message', async (data) => {
     try {

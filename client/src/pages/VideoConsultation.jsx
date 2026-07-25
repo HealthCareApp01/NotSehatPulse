@@ -27,12 +27,88 @@ const VideoConsultation = () => {
   const localStreamRef = useRef(null);
   const ringbackIntervalRef = useRef(null);
   const audioCtxRef = useRef(null);
+  const videoAreaRef = useRef(null);
+  const pipRef = useRef(null);
 
   const [timer, setTimer] = useState(600);
   const [patientJoined, setPatientJoined] = useState(false);
   const [callDeclined, setCallDeclined] = useState(false);
   const [callFailed, setCallFailed] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  const [remoteMuted, setRemoteMuted] = useState(false);
+  const [remoteVideoOff, setRemoteVideoOff] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  const handleMouseDown = (e) => {
+    // Only drag with left click
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const startX = e.clientX - position.x;
+    const startY = e.clientY - position.y;
+
+    const containerRect = videoAreaRef.current?.getBoundingClientRect();
+    const pipRect = pipRef.current?.getBoundingClientRect();
+
+    const handleMouseMove = (moveEvent) => {
+      let newX = moveEvent.clientX - startX;
+      let newY = moveEvent.clientY - startY;
+
+      if (containerRect && pipRect) {
+        const maxMoveLeft = -(containerRect.width - pipRect.width - 32);
+        const maxMoveRight = 0;
+        const maxMoveUp = -(containerRect.height - pipRect.height - 32);
+        const maxMoveDown = 0;
+
+        newX = Math.max(maxMoveLeft, Math.min(maxMoveRight, newX));
+        newY = Math.max(maxMoveUp, Math.min(maxMoveDown, newY));
+      }
+
+      setPosition({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleTouchStart = (e) => {
+    const touch = e.touches[0];
+    const startX = touch.clientX - position.x;
+    const startY = touch.clientY - position.y;
+
+    const containerRect = videoAreaRef.current?.getBoundingClientRect();
+    const pipRect = pipRef.current?.getBoundingClientRect();
+
+    const handleTouchMove = (moveEvent) => {
+      const moveTouch = moveEvent.touches[0];
+      let newX = moveTouch.clientX - startX;
+      let newY = moveTouch.clientY - startY;
+
+      if (containerRect && pipRect) {
+        const maxMoveLeft = -(containerRect.width - pipRect.width - 32);
+        const maxMoveRight = 0;
+        const maxMoveUp = -(containerRect.height - pipRect.height - 32);
+        const maxMoveDown = 0;
+
+        newX = Math.max(maxMoveLeft, Math.min(maxMoveRight, newX));
+        newY = Math.max(maxMoveUp, Math.min(maxMoveDown, newY));
+      }
+
+      setPosition({ x: newX, y: newY });
+    };
+
+    const handleTouchEnd = () => {
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleTouchEnd);
+  };
 
   useEffect(() => {
     if (localStream && localVideoRef.current) {
@@ -164,6 +240,14 @@ const VideoConsultation = () => {
           } catch (e) {
             console.error('Error adding received ice candidate', e);
           }
+        });
+
+        socketRef.current.on('remote-mute-change', ({ isMuted }) => {
+          setRemoteMuted(isMuted);
+        });
+
+        socketRef.current.on('remote-video-change', ({ isVideoOff }) => {
+          setRemoteVideoOff(isVideoOff);
         });
 
         socketRef.current.on('call-ended', () => {
@@ -301,16 +385,26 @@ const VideoConsultation = () => {
   };
 
   const toggleMute = () => {
-    if (localStream) {
-      localStream.getAudioTracks()[0].enabled = !localStream.getAudioTracks()[0].enabled;
-      setIsMuted(!localStream.getAudioTracks()[0].enabled);
+    if (localStream && localStream.getAudioTracks().length > 0) {
+      const track = localStream.getAudioTracks()[0];
+      const nextState = !track.enabled;
+      track.enabled = nextState;
+      setIsMuted(!nextState);
+      if (socketRef.current) {
+        socketRef.current.emit('toggle-mute', { roomId, isMuted: !nextState });
+      }
     }
   };
 
   const toggleVideo = () => {
-    if (localStream) {
-      localStream.getVideoTracks()[0].enabled = !localStream.getVideoTracks()[0].enabled;
-      setIsVideoOff(!localStream.getVideoTracks()[0].enabled);
+    if (localStream && localStream.getVideoTracks().length > 0) {
+      const track = localStream.getVideoTracks()[0];
+      const nextState = !track.enabled;
+      track.enabled = nextState;
+      setIsVideoOff(!nextState);
+      if (socketRef.current) {
+        socketRef.current.emit('toggle-video', { roomId, isVideoOff: !nextState });
+      }
     }
   };
 
@@ -336,7 +430,7 @@ const VideoConsultation = () => {
       </div>
 
       {/* Video Area */}
-      <div className="flex-1 min-h-0 p-4 sm:p-6 flex gap-8 relative">
+      <div ref={videoAreaRef} className="flex-1 min-h-0 p-4 sm:p-6 flex gap-8 relative overflow-hidden">
         {/* Remote Video (Main) */}
         <div className="flex-1 bg-black rounded-[32px] overflow-hidden border border-white/10 relative shadow-2xl flex items-center justify-center">
           {remoteStream ? (
@@ -347,6 +441,23 @@ const VideoConsultation = () => {
                 <VideoIcon size={48} />
               </div>
               <p className="text-white/40 font-medium text-lg">Waiting for remote video...</p>
+            </div>
+          )}
+
+          {/* Remote Video Paused Overlay */}
+          {remoteStream && remoteVideoOff && (
+            <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center z-20">
+              <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center text-white/30 mb-4 border border-white/10">
+                <VideoOff size={44} />
+              </div>
+              <p className="text-white/60 font-semibold text-lg">Participant's camera is turned off</p>
+            </div>
+          )}
+
+          {/* Remote Participant Muted Indicator */}
+          {remoteStream && remoteMuted && (
+            <div className="absolute top-6 right-6 bg-rose-500/90 text-white p-3 rounded-full shadow-lg z-30 flex items-center justify-center">
+              <MicOff size={18} />
             </div>
           )}
 
@@ -394,8 +505,27 @@ const VideoConsultation = () => {
         </div>
 
         {/* Local Video (PiP) */}
-        <div className="absolute bottom-8 right-8 w-48 sm:w-64 h-28 sm:h-36 bg-black rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl z-40">
-          <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
+        <div 
+          ref={pipRef}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+          style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+          className="absolute bottom-8 right-8 w-48 sm:w-64 h-28 sm:h-36 bg-black rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl z-40 flex items-center justify-center cursor-move select-none"
+        >
+          <video ref={localVideoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${isVideoOff ? 'hidden' : 'block'}`} style={{ transform: 'scaleX(-1)' }} />
+
+          {isVideoOff && (
+            <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center z-10">
+              <VideoOff size={24} className="text-white/30 mb-1" />
+              <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider">Camera Off</span>
+            </div>
+          )}
+
+          {isMuted && (
+            <div className="absolute top-2 right-2 bg-rose-500/90 text-white p-1.5 rounded-full z-50 flex items-center justify-center shadow">
+              <MicOff size={10} />
+            </div>
+          )}
         </div>
       </div>
 
