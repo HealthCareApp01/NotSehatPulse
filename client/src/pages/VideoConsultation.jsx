@@ -31,6 +31,8 @@ const VideoConsultation = () => {
   const [timer, setTimer] = useState(600);
   const [patientJoined, setPatientJoined] = useState(false);
   const [callDeclined, setCallDeclined] = useState(false);
+  const [callFailed, setCallFailed] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (localStream && localVideoRef.current) {
@@ -70,30 +72,27 @@ const VideoConsultation = () => {
 
         const configuration = {
           iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
             {
-              urls: "stun:stun.relay.metered.ca:80",
+              urls: "stun:openrelay.metered.ca:80",
             },
             {
-              urls: "turn:global.relay.metered.ca:80",
-              username: "90c6f99de9455f1b2e181af3",
-              credential: "uSA3WDuPz8yKwVYJ",
+              urls: "turn:openrelay.metered.ca:80",
+              username: "openrelayproject",
+              credential: "openrelayproject",
             },
             {
-              urls: "turn:global.relay.metered.ca:80?transport=tcp",
-              username: "90c6f99de9455f1b2e181af3",
-              credential: "uSA3WDuPz8yKwVYJ",
+              urls: "turn:openrelay.metered.ca:443",
+              username: "openrelayproject",
+              credential: "openrelayproject",
             },
             {
-              urls: "turn:global.relay.metered.ca:443",
-              username: "90c6f99de9455f1b2e181af3",
-              credential: "uSA3WDuPz8yKwVYJ",
-            },
-            {
-              urls: "turns:global.relay.metered.ca:443?transport=tcp",
-              username: "90c6f99de9455f1b2e181af3",
-              credential: "uSA3WDuPz8yKwVYJ",
-            },
-            { urls: 'stun:stun.l.google.com:19302' }
+              urls: "turns:openrelay.metered.ca:443?transport=tcp",
+              username: "openrelayproject",
+              credential: "openrelayproject",
+            }
           ]
         };
         const peerConnection = new RTCPeerConnection(configuration);
@@ -108,6 +107,18 @@ const VideoConsultation = () => {
         peerConnection.onicecandidate = (event) => {
           if (event.candidate) {
             socketRef.current.emit('ice-candidate', { roomId, candidate: event.candidate });
+          }
+        };
+
+        peerConnection.oniceconnectionstatechange = () => {
+          if (peerConnection.iceConnectionState === 'failed') {
+            setCallFailed(true);
+          }
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+          if (peerConnection.connectionState === 'failed') {
+            setCallFailed(true);
           }
         };
 
@@ -187,7 +198,18 @@ const VideoConsultation = () => {
         socketRef.current.disconnect();
       }
     };
-  }, [roomId, user, patientId, apptId]); // Re-run if these change, but typically they don't
+  }, [roomId, user, patientId, apptId, retryKey]); // Re-run if these change, but typically they don't
+
+  // 15 seconds connection timeout if peers have matched but stream fails to connect
+  useEffect(() => {
+    let timeout;
+    if (patientJoined && !remoteStream && !callFailed) {
+      timeout = setTimeout(() => {
+        setCallFailed(true);
+      }, 15000);
+    }
+    return () => clearTimeout(timeout);
+  }, [patientJoined, remoteStream, callFailed]);
 
   // Ringback Tone Effect for Doctor
   useEffect(() => {
@@ -337,6 +359,36 @@ const VideoConsultation = () => {
               <h2 className="text-2xl font-black text-white mb-2">Call Declined</h2>
               <p className="text-white/60 font-medium">The patient has rejected the call.</p>
               <p className="text-white/40 text-sm mt-4">Returning to appointments in 3s...</p>
+            </div>
+          )}
+
+          {/* Failed Overlay */}
+          {callFailed && (
+            <div className="absolute inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center z-50 rounded-[32px] p-6 text-center">
+              <div className="w-20 h-20 bg-amber-500/20 rounded-full flex items-center justify-center text-amber-500 mb-4 animate-bounce">
+                <PhoneOff size={40} />
+              </div>
+              <h2 className="text-2xl font-black text-white mb-2">Connection Failed</h2>
+              <p className="text-white/60 font-medium max-w-md">Could not establish a stable audio/video connection. Please check your network and retry.</p>
+              <div className="flex gap-4 mt-6">
+                <button
+                  onClick={() => {
+                    setCallFailed(false);
+                    setRemoteStream(null);
+                    setPatientJoined(false);
+                    setRetryKey(prev => prev + 1);
+                  }}
+                  className="bg-sky-500 hover:bg-sky-600 text-white px-6 py-2.5 rounded-full font-bold transition-all cursor-pointer"
+                >
+                  Retry Connection
+                </button>
+                <button
+                  onClick={endCall}
+                  className="bg-white/10 hover:bg-white/20 text-white px-6 py-2.5 rounded-full font-bold transition-all cursor-pointer"
+                >
+                  Go Back
+                </button>
+              </div>
             </div>
           )}
         </div>

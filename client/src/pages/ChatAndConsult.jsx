@@ -45,6 +45,7 @@ const ChatAndConsult = () => {
   const [unreadCounts, setUnreadCounts] = useState({});
   const [mobileView, setMobileView] = useState('list'); // 'list', 'chat', 'profile'
   const [onlineStatuses, setOnlineStatuses] = useState({});
+  const [socket, setSocket] = useState(null);
 
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -92,10 +93,12 @@ const ChatAndConsult = () => {
 
   // 1. Initialize Socket.io Connection
   useEffect(() => {
-    socketRef.current = io((import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}`));
+    const newSocket = io((import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}`));
+    socketRef.current = newSocket;
+    setSocket(newSocket);
 
     if (user) {
-      socketRef.current.emit('join-user-room', user.id || user._id);
+      newSocket.emit('join-user-room', user.id || user._id);
     }
 
     socketRef.current.on('receive-message', (data) => {
@@ -214,12 +217,12 @@ const ChatAndConsult = () => {
   }, [token, filterType]); // Refetch and re-evaluate when filter changes
 
   useEffect(() => {
-    if (socketRef.current && chatRooms.length > 0) {
+    if (socket && chatRooms.length > 0) {
       const partnerIds = chatRooms
         .map(r => r.partner?._id)
         .filter(id => id && id !== 'system_health_chat');
       if (partnerIds.length > 0) {
-        socketRef.current.emit('check-online-users', partnerIds, (statuses) => {
+        socket.emit('check-online-users', partnerIds, (statuses) => {
           setOnlineStatuses(prev => ({
             ...prev,
             ...statuses
@@ -227,13 +230,13 @@ const ChatAndConsult = () => {
         });
       }
     }
-  }, [chatRooms, socketRef.current]);
+  }, [chatRooms, socket]);
 
   // 3. Join Socket Room and Load Messages on selecting a chat room
   useEffect(() => {
-    if (activeRoom && socketRef.current) {
+    if (activeRoom && socket) {
       // Join Room
-      socketRef.current.emit('join-room', activeRoom.roomId);
+      socket.emit('join-room', activeRoom.roomId);
 
       // Load Messages History
       const fetchMessages = async () => {
@@ -258,7 +261,7 @@ const ChatAndConsult = () => {
 
       fetchMessages();
     }
-  }, [activeRoom?.roomId]);
+  }, [activeRoom?.roomId, socket]);
 
   // Reset disclaimer every time user opens a new chat room
   useEffect(() => {
