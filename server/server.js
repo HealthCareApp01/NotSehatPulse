@@ -34,7 +34,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    origin: "*",
     methods: ["GET", "POST"]
   }
 });
@@ -187,8 +187,8 @@ io.on('connection', (socket) => {
         await newMessage.save();
         console.log(`[Socket] Message saved to DB: ${content.substring(0, 30)}...`);
 
-        // If it's a subscription chat, also emit to the receiver's personal room to notify them in real-time
-        if (isSubscriptionChat && receiverId) {
+        // Emit to the receiver's personal room so they receive it in real-time even if they aren't currently in the specific chat room
+        if (receiverId) {
           socket.to(receiverId.toString()).emit('receive-message', {
             ...data,
             _id: newMessage._id,

@@ -115,9 +115,11 @@ router.post('/signup', async (req, res) => {
         consultationFee: 500,
         bio: 'Dedicated healthcare professional providing comprehensive medical services.',
         availability: [
-          { day: 'Mon', slots: ['10:00 AM - 1:00 PM', '2:00 PM - 5:00 PM'] },
-          { day: 'Wed', slots: ['10:00 AM - 1:00 PM', '2:00 PM - 5:00 PM'] },
-          { day: 'Fri', slots: ['10:00 AM - 1:00 PM', '2:00 PM - 4:00 PM'] }
+          { day: 'Mon', slots: ['10:00 AM - 4:00 PM'] },
+          { day: 'Tue', slots: ['10:00 AM - 4:00 PM'] },
+          { day: 'Wed', slots: ['10:00 AM - 4:00 PM'] },
+          { day: 'Thu', slots: ['10:00 AM - 4:00 PM'] },
+          { day: 'Fri', slots: ['10:00 AM - 4:00 PM'] }
         ],
         verified: false,
         hasFilledProfile: false

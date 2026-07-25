@@ -104,10 +104,8 @@ const FindDoctors = () => {
   const upcomingDates = React.useMemo(() => {
     const dates = [];
     const current = new Date();
-    while (dates.length < 6) {
-      if (current.getDay() !== 0) {
-        dates.push(new Date(current));
-      }
+    while (dates.length < 7) {
+      dates.push(new Date(current));
       current.setDate(current.getDate() + 1);
     }
     return dates;
@@ -198,13 +196,19 @@ const FindDoctors = () => {
     const selectedDate = upcomingDates[selectedSlotIndex] || new Date();
     const dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'short' });
     
-    let timeSlot = '10:00 AM - 4:00 PM';
+    let timeSlot = 'Unavailable';
     
     if (activeDoctor.availability && activeDoctor.availability.length > 0) {
       const sched = activeDoctor.availability.find(a => a.day === dayName);
       if (sched && sched.slots && sched.slots.length > 0) {
         timeSlot = sched.slots[0];
       }
+    }
+
+    if (timeSlot === 'Unavailable') {
+      setPaymentError('Doctor is not available on this day.');
+      setPaymentLoading(false);
+      return;
     }
     
     const formattedSlot = `${dayName} (${timeSlot})`;
@@ -643,14 +647,12 @@ const FindDoctors = () => {
                     {upcomingDates.map((dateObj, idx) => {
                       const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
                       const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                      let timeSlot = '10:00 AM - 4:00 PM';
+                      let timeSlot = 'Unavailable';
                       
                       if (activeDoctor.availability && activeDoctor.availability.length > 0) {
                         const sched = activeDoctor.availability.find(a => a.day === dayName);
                         if (sched && sched.slots && sched.slots.length > 0) {
                           timeSlot = sched.slots[0];
-                        } else {
-                          timeSlot = 'Unavailable';
                         }
                       }
 

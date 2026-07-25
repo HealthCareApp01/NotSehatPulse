@@ -170,10 +170,13 @@ const DoctorDashboard = () => {
         const popularSlots = ["10:00 AM - 4:00 PM", "09:00 AM - 01:00 PM", "02:00 PM - 06:00 PM", "06:00 PM - 09:00 PM"];
         const currentSlot = (existing && existing.slots.length > 0) ? existing.slots[0] : "10:00 AM - 4:00 PM";
         
+        // Saturday and Sunday default to not available, others default to available
+        const defaultAvailable = dayName !== 'Sat' && dayName !== 'Sun';
+
         return {
           day: dayName,
           dateStr: dateStr,
-          available: existing ? existing.slots.length > 0 : true,
+          available: existing ? existing.slots.length > 0 : defaultAvailable,
           slot: currentSlot,
           isCustom: !popularSlots.includes(currentSlot)
         };

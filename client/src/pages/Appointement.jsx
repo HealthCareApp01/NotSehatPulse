@@ -17,10 +17,8 @@ const Appointment = () => {
     const dates = [];
     const current = new Date();
     current.setDate(current.getDate() + 1); // Start from tomorrow
-    while (dates.length < 6) {
-      if (current.getDay() !== 0) { // Skip Sundays
-        dates.push(new Date(current));
-      }
+    while (dates.length < 7) {
+      dates.push(new Date(current));
       current.setDate(current.getDate() + 1);
     }
     return dates;

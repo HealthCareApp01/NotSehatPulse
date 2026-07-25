@@ -94,6 +94,10 @@ const ChatAndConsult = () => {
   useEffect(() => {
     socketRef.current = io((import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}`));
 
+    if (user) {
+      socketRef.current.emit('join-user-room', user.id || user._id);
+    }
+
     socketRef.current.on('receive-message', (data) => {
       const currentActiveRoom = activeRoomRef.current;
       // If message is in the currently active room, append it
@@ -279,7 +283,7 @@ const ChatAndConsult = () => {
     const encryptedContent = encryptMessage(inputMessage, activeRoom.roomId);
 
     const messageData = {
-      senderId: user.id,
+      senderId: user.id || user._id,
       senderName: user.name,
       senderRole: user.role,
       receiverId: activeRoom.partner?._id,
@@ -296,7 +300,7 @@ const ChatAndConsult = () => {
       ...prev,
       {
         _id: Date.now().toString(),
-        senderId: { _id: user.id, name: user.name, role: user.role },
+        senderId: { _id: user.id || user._id, name: user.name, role: user.role },
         content: inputMessage,
         roomId: activeRoom.roomId,
         timestamp: new Date()
